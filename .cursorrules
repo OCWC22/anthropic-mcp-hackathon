@@ -1,5 +1,5 @@
 
-1.	Objective: Build a client for the Anthropic MCP protocol that generates a memory knowledge graph.
+1.	Objective: Build a client for the Anthropic MCP protocol that generates a memory knowledge graph out of a users google drive folder.
 
 2.	Review Existing Code:
 	•	Examine the contents of the memoryhash_server_mcp_repo.txt and anthropic_mcp_ts_sdk_repo.txt files.
@@ -8,6 +8,9 @@
 
 3.	Implementation:
 	•	Implement the client in the memoryhash_server_mcp_repo.txt file, following the plan you created.
+    •   This client should be able to take a users google drive folder and generate a memory knowledge graph.
+    •   This client should be able to read google docs, google sheets, google calendar, gmail, and google keep and read all the data in the files (docx, txt, pdf, etc.) and generate a memory knowledge graph.
+    
     
 4.	Testing:
 	•	Test the implemented client to verify it functions as intended.
