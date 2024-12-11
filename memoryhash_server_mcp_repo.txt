@@ -1,0 +1,4837 @@
+Directory structure:
+└── CheMiguel23-MemoryMesh
+    ├── SchemaManager.html
+    ├── README.md
+    ├── package.json
+    ├── tsconfig.json
+    └── src
+        ├── tools
+        │   ├── tools.js
+        │   ├── callToolHandler.js
+        │   └── DynamicSchemaToolRegistry.js
+        ├── core
+        │   ├── managers
+        │   │   ├── implementations
+        │   │   │   ├── EdgeManager.js
+        │   │   │   ├── NodeManager.js
+        │   │   │   ├── SearchManager.js
+        │   │   │   └── MetadataManager.js
+        │   │   ├── ManagerFactory.js
+        │   │   └── interfaces
+        │   │       ├── IMetadataManager.js
+        │   │       ├── INodeManager.js
+        │   │       ├── IManager.js
+        │   │       ├── ISearchManager.js
+        │   │       └── IEdgeManager.js
+        │   ├── storage
+        │   │   └── JsonLineStorage.js
+        │   ├── events
+        │   │   └── EventEmitter.js
+        │   └── KnowledgeGraphManager.js
+        ├── config
+        │   └── schemas
+        │       ├── artifact.schema.json
+        │       ├── quest.schema.json
+        │       ├── currency.schema.json
+        │       ├── player_character.schema.json
+        │       ├── faction.schema.json
+        │       ├── skills.schema.json
+        │       ├── transportation.schema.json
+        │       ├── location.schema.json
+        │       ├── npc.schema.json
+        │       ├── inventory.schema.json
+        │       └── temporal.schema.json
+        ├── index.js
+        ├── schema
+        │   └── loader
+        │       ├── schemaProcessor.js
+        │       ├── schemaLoader.js
+        │       └── schemaBuilder.js
+        └── data
+            └── memory.json
+
+================================================
+File: /SchemaManager.html
+================================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schema Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
+    <style>
+        /* --- Base Styles --- */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #60a5fa;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: var(--gray-800);
+            background-color: var(--gray-50);
+        }
+
+        /* --- Typography --- */
+        h1 {
+            margin-bottom: 2rem;
+            color: var(--gray-900);
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        h2 {
+            color: var(--gray-800);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            color: var(--gray-700);
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* --- Layout Components --- */
+        .container {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .folder-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .folder-path {
+            flex: 1;
+            font-family: monospace;
+            padding: 0.5rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-300);
+            border-radius: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--gray-600);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* --- Forms --- */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* --- Properties Section --- */
+        .properties-container {
+            border: 1px solid var(--gray-300);
+            padding: 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            background: white;
+        }
+
+        .property {
+            border: 1px solid var(--gray-200);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
+            background: var(--gray-50);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 1rem;
+            background: var(--primary);
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* --- Editor --- */
+        .editor-container {
+            height: 500px;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        #jsonEditor {
+            height: 100%;
+            font-size: 14px;
+        }
+
+        /* --- Checkboxes --- */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        /* --- Toast Notifications --- */
+        #toastContainer {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            min-width: 250px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.25rem;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            animation: slideIn 0.5s forwards, fadeOut 0.5s forwards 2.5s;
+        }
+
+        .toast-success {
+            background-color: var(--success);
+        }
+
+        .toast-error {
+            background-color: var(--danger);
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        /* --- Schema Select --- */
+        #loadSchemaSelect {
+            margin-bottom: 1rem;
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .folder-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .property-header {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .property {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- New Styles --- */
+        /* Add new styles for locked fields */
+        .locked-field {
+            background-color: var(--gray-100);
+            cursor: not-allowed;
+        }
+
+        .locked-field:disabled {
+            color: var(--gray-700);
+        }
+
+        /* Add style for the additional properties checkbox */
+        .global-settings {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--gray-100);
+            border-radius: 0.25rem;
+        }
+
+        /* --- Enum Fields --- */
+        .enum-fields {
+            display: none;
+        }
+
+        /* --- Updated Property Layout --- */
+        .property-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .property-row.large {
+            flex-wrap: wrap;
+        }
+
+        .property-row.large .form-group {
+            flex: 2;
+        }
+
+        .property-row.small {
+            flex: 1;
+        }
+
+        .property-row .form-group {
+            flex: 1;
+        }
+
+        .conditional-input {
+            flex: 2;
+        }
+
+        /* Adjust Description field to be twice as wide */
+        .description-input {
+            flex: 2;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Schema Manager</h1>
+
+    <div class="folder-section">
+        <button class="btn" onclick="selectDirectory()">Select Schemas Folder</button>
+        <div class="folder-path" id="folderPath">No folder selected</div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer"></div>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="create">Create Schema</button>
+        <button class="tab" data-tab="viewRaw">View/Edit Schema (raw)</button>
+    </div>
+
+    <div id="createSchema" class="tab-content active">
+        <div class="form-group">
+            <label for="schemaName">Schema Name:</label>
+            <input type="text" id="schemaName" placeholder="Identifier for the schema and node type within the memory">
+            <!-- Removed onInput="updateNameProperty()" -->
+        </div>
+
+        <div class="form-group">
+            <label for="schemaDescription">Schema Description:</label>
+            <input type="text" id="schemaDescription" placeholder="Description for the add_<name> tool, providing context for the AI.">
+        </div>
+
+        <div class="global-settings">
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allowAdditionalProps" checked>
+                    Allow Additional Properties
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Properties:</label>
+            <div id="propertiesContainer" class="properties-container">
+                <!-- Properties will be added here -->
+            </div>
+            <button class="btn" onclick="addProperty()">Add Property</button>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn" onclick="viewRawSchema()">View in Raw Format</button>
+            <button class="btn btn-danger" onclick="resetForm()">Reset</button>
+        </div>
+    </div>
+
+    <div id="viewRawSchema" class="tab-content">
+        <select id="loadSchemaSelect">
+            <option value="">Select a schema to load...</option>
+        </select>
+        <div class="editor-container">
+            <div id="jsonEditor"></div>
+        </div>
+        <div class="button-group" style="display: flex; gap: 1rem;">
+            <button class="btn" onclick="saveSchema()">Save Schema</button>
+            <button class="btn" onclick="editSchema()">Edit</button>
+            <button class="btn btn-danger" onclick="deleteSchema()">Delete Schema</button>
+        </div>
+    </div>
+<script>
+    // Global state
+    let dirHandle = null;
+    let currentSchemaHandle = null;
+
+    // Initialize Ace editor
+    const editor = ace.edit("jsonEditor");
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/json");
+    editor.setOptions({
+        fontSize: "14px",
+        showPrintMargin: false,
+        showGutter: true,
+        highlightActiveLine: true,
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true,
+        enableSnippets: true
+    });
+
+    // Toast Notifications
+    function showToast(message, type = 'success', duration = 3000) {
+        const toastContainer = document.getElementById('toastContainer');
+
+        const toast = document.createElement('div');
+        toast.classList.add('toast');
+        toast.classList.add(type === 'success' ? 'toast-success' : 'toast-error');
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        // Remove toast after duration + animation time
+        setTimeout(() => {
+            toast.remove();
+        }, duration + 1000); // 1000ms accounts for fadeOut animation
+    }
+
+    // IndexedDB setup for storing directory handle
+    let db;
+    const dbName = 'SchemaManagerDB';
+    const storeName = 'directory';
+
+    async function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, 1);
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
+            };
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                resolve();
+            };
+            request.onerror = (event) => {
+                reject(event.target.error);
+            };
+        });
+    }
+
+    async function saveDirectoryHandle(handle) {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(handle, 'schemasDirectory');
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    async function getDirectoryHandleFromDB() {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get('schemasDirectory');
+            request.onsuccess = async (event) => {
+                const handle = event.target.result;
+                if (handle) {
+                    // Check if we still have permission
+                    const permission = await handle.queryPermission({ mode: 'readwrite' });
+                    if (permission === 'granted') {
+                        resolve(handle);
+                        return;
+                    }
+                }
+                resolve(null);
+            };
+            request.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    async function removeDirectoryHandleFromDB() {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.delete('schemasDirectory');
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    // File system operations
+    async function selectDirectory() {
+        try {
+            let options = {
+                id: 'schemas-directory',
+                mode: 'readwrite'
+            };
+
+            // Attempt to get the stored directory handle
+            const storedHandle = await getDirectoryHandleFromDB();
+            if (storedHandle) {
+                options.startIn = storedHandle;
+            } else {
+                options.startIn = 'documents';
+            }
+
+            dirHandle = await window.showDirectoryPicker(options);
+            
+            // Verify that the selected directory is different from the stored one
+            if (storedHandle && dirHandle.name !== storedHandle.name) {
+                // Remove old handle from DB
+                await removeDirectoryHandleFromDB();
+            }
+
+            // Update folder path display
+            document.getElementById('folderPath').textContent = dirHandle.name;
+            await loadSchemas();
+            showToast('Folder selected successfully!', 'success');
+
+            // Store the directory handle for future use
+            await saveDirectoryHandle(dirHandle);
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                showToast('Error selecting folder: ' + error.message, 'error');
+            }
+        }
+    }
+
+    async function loadSchemas() {
+        if (!dirHandle) return;
+
+        const select = document.getElementById('loadSchemaSelect');
+        select.innerHTML = '<option value="">Select a schema to load...</option>';
+
+        try {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.schema.json')) {
+                    const option = document.createElement('option');
+                    option.value = entry.name;
+                    option.textContent = entry.name;
+                    select.appendChild(option);
+                }
+            }
+        } catch (error) {
+            showToast('Error loading schemas: ' + error.message, 'error');
+        }
+    }
+
+    async function loadSchemaFile(filename) {
+        try {
+            const fileHandle = await dirHandle.getFileHandle(filename);
+            currentSchemaHandle = fileHandle;
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            
+            // Parse and format the JSON before setting it in the editor
+            const formattedContent = JSON.stringify(JSON.parse(content), null, 2);
+            editor.setValue(formattedContent);
+            editor.clearSelection();
+            
+            showToast('Schema loaded successfully!', 'success');
+        } catch (error) {
+            showToast('Error loading schema: ' + error.message, 'error');
+        }
+    }
+
+    async function saveSchema() {
+        if (!dirHandle) {
+            showToast('Please select a schemas folder first', 'error');
+            return;
+        }
+
+        try {
+            const schemaContent = editor.getValue();
+            // Validate JSON
+            const schema = JSON.parse(schemaContent);
+            
+            // Basic schema validation
+            if (!schema.name) {
+                throw new Error('Schema must have a name property');
+            }
+            if (!schema.properties) {
+                throw new Error('Schema must have properties defined');
+            }
+
+            let fileHandle;
+            const fileName = `${schema.name.replace('add_', '')}.schema.json`;
+
+            try {
+                fileHandle = await dirHandle.getFileHandle(fileName);
+                // If file exists, confirm overwrite
+                if (!confirm(`Schema ${fileName} already exists. Do you want to overwrite it?`)) {
+                    return;
+                }
+            } catch {
+                // File doesn't exist, create new one
+                fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            }
+
+            // Write the new content
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(schema, null, 2));
+            await writable.close();
+
+            currentSchemaHandle = fileHandle;
+            await loadSchemas();
+            showToast('Schema saved successfully!', 'success');
+        } catch (error) {
+            showToast('Error saving schema: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteSchema() {
+        if (!currentSchemaHandle) {
+            showToast('Please select a schema to delete', 'error');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete ${currentSchemaHandle.name}? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await dirHandle.removeEntry(currentSchemaHandle.name);
+            editor.setValue('');
+            currentSchemaHandle = null;
+            await loadSchemas();
+            showToast('Schema deleted successfully!', 'success');
+        } catch (error) {
+            showToast('Error deleting schema: ' + error.message, 'error');
+        }
+    }
+
+    // Schema generation and property management
+    function createPropertyTemplate() {
+        return `
+            <div class="property">
+                <div class="property-header">
+                    <h3>Property</h3>
+                    <button class="btn btn-danger" onclick="removeProperty(this)">Remove</button>
+                </div>
+                <div class="property-row large">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" class="property-name" placeholder="Property">
+                    </div>
+                    <div class="form-group description-input">
+                        <label>Description:</label>
+                        <input type="text" class="property-description" placeholder="Property description">
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select class="property-type" onchange="handlePropertyTypeChange(this)">
+                            <option value="string">String</option>
+                            <option value="array">Array</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-required">
+                            Required
+                        </label>
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-enum" onchange="toggleEnumFields(this)">
+                            Is Enum
+                        </label>
+                        <input type="text" class="enum-values-input conditional-input" placeholder="e.g., active, inactive, pending" style="display: none;">
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-relationship" onchange="toggleRelationshipFields(this)">
+                            Is Relationship
+                        </label>
+                        <input type="text" class="edge-type conditional-input" placeholder="e.g., owns, belongs_to" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function createNamePropertyTemplate() { // Removed schemaName parameter
+        return `
+            <div class="property" id="property-name-property">
+                <div class="property-header">
+                    <h3>Name Property</h3>
+                </div>
+                <div class="property-row large">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" class="property-name" value="name" disabled>
+                    </div>
+                    <div class="form-group description-input">
+                        <label>Description:</label>
+                        <input type="text" class="property-description" 
+                               placeholder="Property description">
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select class="property-type" disabled>
+                            <option value="string" selected>String</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-required" checked disabled>
+                            Required
+                        </label>
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-enum" disabled>
+                            Is Enum
+                        </label>
+                        <input type="text" class="enum-values-input conditional-input" placeholder="e.g., active, inactive, pending" style="display: none;" disabled>
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-relationship" disabled>
+                            Is Relationship
+                        </label>
+                        <input type="text" class="edge-type conditional-input" placeholder="e.g., owns, belongs_to" style="display: none;" disabled>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function handlePropertyTypeChange(select) {
+        const property = select.closest('.property');
+        // Since we limited to string and array, no need to handle enum based on type
+        // Enum is now handled via a separate checkbox
+    }
+
+    function toggleEnumFields(checkbox) {
+        const property = checkbox.closest('.property');
+        const enumInput = property.querySelector('.enum-values-input');
+        enumInput.style.display = checkbox.checked ? 'block' : 'none';
+    }
+
+    function toggleRelationshipFields(checkbox) {
+        const property = checkbox.closest('.property');
+        const relationshipInput = property.querySelector('.edge-type');
+        relationshipInput.style.display = checkbox.checked ? 'block' : 'none';
+    }
+
+    function addProperty() {
+        const container = document.getElementById('propertiesContainer');
+        container.insertAdjacentHTML('beforeend', createPropertyTemplate());
+    }
+
+    function removeProperty(button) {
+        const property = button.closest('.property');
+        property.remove();
+    }
+
+    // Removed updateNameProperty function
+
+    function viewRawSchema() {
+        generateSchema();
+    }
+
+    function generateSchema() {
+        const name = document.getElementById('schemaName').value;
+        const description = document.getElementById('schemaDescription').value;
+        const allowAdditionalProps = document.getElementById('allowAdditionalProps').checked;
+        
+        if (!name) {
+            showToast('Schema name is required', 'error');
+            return;
+        }
+
+        const properties = {};
+        document.querySelectorAll('.property').forEach(prop => {
+            // Skip the Name Property
+            if (prop.id === 'property-name-property') return;
+
+            const propName = prop.querySelector('.property-name').value;
+            if (!propName) return;
+
+            const propDesc = prop.querySelector('.property-description').value;
+            const propType = prop.querySelector('.property-type').value;
+            const required = prop.querySelector('.property-required').checked;
+            const isEnum = prop.querySelector('.property-enum').checked;
+            const enumValues = isEnum ? prop.querySelector('.enum-values-input')?.value
+                .split(',')
+                .map(v => v.trim())
+                .filter(v => v) : null;
+            const isRelationship = prop.querySelector('.property-relationship').checked;
+            const edgeType = isRelationship ? prop.querySelector('.edge-type').value : null;
+
+            const property = {
+                type: propType,
+                description: propDesc,
+                required: required
+            };
+
+            if (isEnum && enumValues) {
+                property.enum = enumValues;
+            }
+
+            if (isRelationship) {
+                property.relationship = {
+                    edgeType: edgeType,
+                    description: propDesc
+                };
+            }
+
+            properties[propName] = property;
+        });
+
+        // Handle the Name Property
+        const nameProp = document.querySelector('#property-name-property');
+        if (nameProp) {
+            const propName = nameProp.querySelector('.property-name').value; // Should be 'name'
+            const propDesc = nameProp.querySelector('.property-description').value;
+            const propType = nameProp.querySelector('.property-type').value;
+            const required = nameProp.querySelector('.property-required').checked;
+
+            properties[propName] = {
+                type: propType,
+                description: propDesc,
+                required: required
+            };
+        }
+
+        const schema = {
+            name: `add_${name}`,
+            description: description,
+            properties: properties,
+            additionalProperties: allowAdditionalProps
+        };
+
+        editor.setValue(JSON.stringify(schema, null, 2));
+        document.querySelector('[data-tab="viewRaw"]').click();
+    }
+
+    function editSchema() {
+        const select = document.getElementById('loadSchemaSelect');
+        const selectedFile = select.value;
+        if (!selectedFile) {
+            showToast('Please select a schema to edit.', 'error');
+            return;
+        }
+        loadSchemaIntoCreateTab(selectedFile);
+    }
+
+    async function loadSchemaIntoCreateTab(filename) {
+        try {
+            const fileHandle = await dirHandle.getFileHandle(filename);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const schema = JSON.parse(content);
+
+            // Populate schemaName and schemaDescription
+            document.getElementById('schemaName').value = schema.name.replace(/^add_/, '');
+            document.getElementById('schemaDescription').value = schema.description;
+
+            // Clear existing properties except the Name Property
+            const propertiesContainer = document.getElementById('propertiesContainer');
+            propertiesContainer.innerHTML = createNamePropertyTemplate();
+
+            // Populate the Description of the Name Property
+            const namePropertyDescriptionInput = document.querySelector('#property-name-property .property-description');
+            if (namePropertyDescriptionInput) {
+                namePropertyDescriptionInput.value = schema.properties.name.description;
+            }
+
+            // Add properties from schema
+            for (const [propName, propDetails] of Object.entries(schema.properties)) {
+                if (propName === 'name') continue; // Skip the Name Property
+                propertiesContainer.insertAdjacentHTML('beforeend', generatePropertyHTML(propName, propDetails));
+            }
+
+            // Switch to the Create Schema tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector('.tab[data-tab="create"]').classList.add('active');
+            document.getElementById('createSchema').classList.add('active');
+
+            showToast('Schema loaded into Create Schema tab for editing.', 'success');
+        } catch (error) {
+            showToast('Error editing schema: ' + error.message, 'error');
+        }
+    }
+
+    function generatePropertyHTML(propName, propDetails) {
+        let enumSection = '';
+        if (propDetails.enum && Array.isArray(propDetails.enum)) {
+            enumSection = `
+                <input type="text" class="enum-values-input conditional-input" value="${propDetails.enum.join(', ')}" placeholder="e.g., active, inactive, pending" style="display: block;">
+            `;
+        } else {
+            enumSection = `
+                <input type="text" class="enum-values-input conditional-input" placeholder="e.g., active, inactive, pending" style="display: none;">
+            `;
+        }
+
+        let relationshipSection = '';
+        if (propDetails.relationship && propDetails.relationship.edgeType) {
+            relationshipSection = `
+                <input type="text" class="edge-type conditional-input" value="${propDetails.relationship.edgeType}" placeholder="e.g., owns, belongs_to" style="display: block;">
+            `;
+        } else {
+            relationshipSection = `
+                <input type="text" class="edge-type conditional-input" placeholder="e.g., owns, belongs_to" style="display: none;">
+            `;
+        }
+
+        const isEnum = propDetails.enum && Array.isArray(propDetails.enum);
+        const isRelationship = propDetails.relationship && propDetails.relationship.edgeType;
+
+        return `
+            <div class="property">
+                <div class="property-header">
+                    <h3>Property</h3>
+                    <button class="btn btn-danger" onclick="removeProperty(this)">Remove</button>
+                </div>
+                <div class="property-row large">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" class="property-name" value="${propName}" placeholder="Property name">
+                    </div>
+                    <div class="form-group description-input">
+                        <label>Description:</label>
+                        <input type="text" class="property-description" value="${propDetails.description}" placeholder="Property description">
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select class="property-type" onchange="handlePropertyTypeChange(this)">
+                            <option value="string" ${propDetails.type === 'string' ? 'selected' : ''}>String</option>
+                            <option value="array" ${propDetails.type === 'array' ? 'selected' : ''}>Array</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-required" ${propDetails.required ? 'checked' : ''}>
+                            Required
+                        </label>
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-enum" onchange="toggleEnumFields(this)" ${isEnum ? 'checked' : ''}>
+                            Is Enum
+                        </label>
+                        ${enumSection}
+                    </div>
+                </div>
+                <div class="property-row small">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="property-relationship" onchange="toggleRelationshipFields(this)" ${isRelationship ? 'checked' : ''}>
+                            Is Relationship
+                        </label>
+                        ${relationshipSection}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab + 'Schema').classList.add('active');
+        });
+    });
+
+    // Schema loading
+    document.getElementById('loadSchemaSelect').addEventListener('change', (e) => {
+        if (e.target.value) {
+            loadSchemaFile(e.target.value);
+        }
+    });
+
+    // Initialize the application
+    async function initialize() {
+        try {
+            await initDB();
+        } catch (error) {
+            showToast('Error initializing database: ' + error.message, 'error');
+            return;
+        }
+
+        // Check for File System Access API support
+        if (!('showDirectoryPicker' in window)) {
+            showToast('Your browser does not support the File System Access API. Please use a modern browser like Chrome or Edge.', 'error', 0);
+            return;
+        }
+
+        // Attempt to retrieve the stored directory handle
+        try {
+            const storedHandle = await getDirectoryHandleFromDB();
+            if (storedHandle) {
+                // Verify permissions
+                const permission = await storedHandle.queryPermission({ mode: 'readwrite' });
+                if (permission === 'granted') {
+                    dirHandle = storedHandle;
+                    document.getElementById('folderPath').textContent = dirHandle.name;
+                    await loadSchemas();
+                    showToast('Loaded previously selected folder.', 'success');
+                } else {
+                    // Request permission
+                    const requestPermission = await storedHandle.requestPermission({ mode: 'readwrite' });
+                    if (requestPermission === 'granted') {
+                        dirHandle = storedHandle;
+                        document.getElementById('folderPath').textContent = dirHandle.name;
+                        await loadSchemas();
+                        showToast('Loaded previously selected folder.', 'success');
+                    } else {
+                        // Permission denied, remove handle from DB
+                        await removeDirectoryHandleFromDB();
+                        showToast('Permission to access the previously selected folder was denied.', 'error');
+                    }
+                }
+            }
+        } catch (error) {
+            showToast('Error accessing stored folder: ' + error.message, 'error');
+        }
+
+        // Add name property with fixed name
+        const container = document.getElementById('propertiesContainer');
+        container.innerHTML = createNamePropertyTemplate();
+
+        // Add one empty property
+        addProperty();
+    }
+
+    // Reset Form Functionality
+    function resetForm() {
+        if (!confirm('Are you sure you want to reset the form? All unsaved changes will be lost.')) {
+            return;
+        }
+
+        // Clear Schema Name and Description
+        document.getElementById('schemaName').value = '';
+        document.getElementById('schemaDescription').value = '';
+
+        // Reset Allow Additional Properties to checked
+        document.getElementById('allowAdditionalProps').checked = true;
+
+        // Reset Properties Container
+        const propertiesContainer = document.getElementById('propertiesContainer');
+        propertiesContainer.innerHTML = createNamePropertyTemplate();
+
+        // Add one empty property
+        addProperty();
+
+        showToast('Form has been reset to default state.', 'success');
+    }
+
+    // Start the application
+    initialize();
+</script>
+</body>
+</html>
+
+
+================================================
+File: /README.md
+================================================
+# MemoryMesh
+
+This project is based on the [Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) from the MCP servers repository and retains its core functionality. For installation details beyond what’s provided here, refer to the original repository link above if needed. The main entry point of this application is the index.js file.
+
+## Overview
+MemoryMesh is a local knowledge graph server that can store, update, and recall structured information for AI models. Originally **designed for text-based RPG** settings, it can also be **adapted to social networks, organizational planning, or other structured data scenarios**.
+
+### Key Features
+* **Dynamic Schema-Based Tools:** MemoryMesh supports **creating dynamic tools directly from schema definitions**. You can add a schema file, and the **server automatically generates** add_, update_, and delete_ tools for that entity type.
+* **Schemas:** Allows the creation of "schemas" that **pushes AI** in generating necessary nodes (entities) throughout your sessions. A separate tool included! _(more details below)_
+* **Metadata Expansion:** Define required, optional, and enumerated fields on nodes. This structure **guides AI**, ensuring it provides the information you need.
+* **Relationships Made Easy:** By including relationship definitions within schemas, **AI will be forced** to create edges and related nodes.
+* **AI Awareness:** Tools are designed to **inform the AI about the data that is expected**. The AI can use these tools to maintain a consistent and accurate knowledge graph as the narrative or data scenario progresses.
+* **Update nodes and edges**: added update tool.
+* **Event Support:** An event system is in place to track operations _(still not fully tested)_.
+
+### Nodes and edges
+Nodes represent entities or concepts. Each node includes:
+
+* `name`: A unique identifier for the node.
+* `nodeType`: Category or type of the node (e.g., `npc`, `artifact`, `location`)
+* `metadata`: Array of strings containing descriptive details.
+```json
+    {
+      "name": "Aragorn",
+      "nodeType": "player_character",
+      "metadata": [
+        "Race: Human",
+        "Class: Ranger",
+        "Skills: Tracking, Swordsmanship",
+        "Affiliation: Fellowship of the Ring"
+      ]
+    }
+```
+
+#### Edges
+Edges represent relationships between nodes:
+* `from`: Source node’s name
+* `to`: Target node’s name
+* `edgeType`: Type of relationship (e.g., `owns`, `located_in`)
+```json
+{
+  "from": "Aragorn",
+  "to": "Andúril",
+  "edgeType": "owns"
+}
+```
+
+### Schemas
+
+#### SchemaManager tool - an easy way to create and edit your schemas!
+[SchemaManager tool](https://github.com/CheMiguel23/MemoryMesh/blob/main/SchemaManager.html) included in the repository.
+How to use it is detailed in the [guide](https://github.com/CheMiguel23/MemoryMesh/discussions/3).
+
+<img width="370" alt="image" src="https://github.com/user-attachments/assets/e8f0c808-2ff6-48da-ac7c-cf51aebde7b8">
+
+#### Details
+
+The most important part of the application.
+Schemas define how nodes and edges should be structured for a particular entity type. By placing a schema in `dist/config/schemas/`, MemoryMesh **automatically generates tools** `add_<nodeType>`, `update_<nodeType>`, and `delete_<nodeType>`.
+File name: `[name].schema.json`
+
+Schema Fields:
+* `name` - Identifier for the schema and node type within the memory. **IMPORTANT**: The schema’s name *must* start with `add_` to be recognized.
+* `description` - Used as the description for the `add_<name>` tool, providing context for the AI. *(The `delete` and `update` tools have a generic description)*
+* `properties` - Each property includes its type, description, and additional constraints.
+    * `property`
+        * `type` - Supported values are `string` or `array`.
+        * `description` - Helps guide the AI on the entity’s purpose.
+        * `required` - Boolean. If `true`, the **AI is forced** to provide this property when creating a node.
+        * `enum` - An array of strings. If present, the **AI must choose** one of the given options.
+        * `relationship` - Defines a connection to another node. If a property is required and has a relationship, the **AI will always create** both the node and the corresponding edge.
+            * `edgeType` - Type of the relationship to be created.
+            * `description` - Helps guide the AI on the relationship’s purpose.
+* `additionalProperties` - Boolean. If `true`, allows the AI to add extra attributes beyond those defined as required or optional.
+
+#### Schema Implementation and example
+
+```json
+{
+  "name": "add_npc",
+  "description": "Schema for adding an NPC to the memory" ,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "A unique identifier for the NPC",
+      "required": true
+    },
+    "race": {
+      "type": "string",
+      "description": "The species or race of the NPC",
+      "required": true,
+      "enum": [
+        "Human",
+        "Elf",
+        "Dwarf",
+        "Orc",
+        "Goblin"
+      ]
+    },
+    "currentLocation": {
+      "type": "string",
+      "description": "The current location of the NPC",
+      "required": true,
+      "relationship": {
+        "edgeType": "located_in",
+        "description": "The current location of the NPC"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+With this schema, the server creates the following tools:
+* `add_npc`
+* `update_npc`
+* `delete_npc`
+
+**IMPORTANT:** This repository includes 11 RPG-theme schemas that you can freely explore, modify and create your own! 
+
+### Memory file
+By default, data is stored in a JSON file in `dist/data/memory.json`.
+
+## Custom implementation
+
+To add a new entity type:
+1. Create a schema file in `dist/config/schemas/` (e.g., city.schema.json).
+2. Restart the server.
+3. The dynamic tools (add_city, update_city, delete_city) will be available automatically.
+
+## Memory Flow
+
+![image](https://github.com/user-attachments/assets/27519003-c1e6-448a-9fdb-cd0a0009f67d)
+
+## Prompt
+For optimal results:
+* Use Claude’s "Projects" feature with custom instructions
+* Include information about the available tools and expected entity types.
+* Instruct the AI to call these tools to keep the knowledge graph updated as stories or plans evolve.
+
+The prompt I used for testing:
+> You perform roles of an RPG bot and a Memory Manager bot.
+> ALWAYS IN ORDER:
+> 1. First, fulfill role Memory Manager bot to process user's input and shape planned output
+> 2. Second, the role of RPG bot
+> 3. Finally, Memory Manager bot again to check for any major changes that should be tracked _(NB: this rule is usually ignore)_
+> 
+> [Then instructions to define AI as 'Game Master' with appropriate instructions. A [resource](https://www.rpgprompts.com/post/dungeons-dragons-chatgpt-prompt) for inspiration.]
+> 
+> [After I provide a list all available tools with their description.]
+
+You can always instruct AI to perform certain actions directly in the chat _(give me an artifact, make this npc an elf, etc.)_, including _"update memory"_, which I use before moving conversation to another chat when I face the _"Long chats cause..."_ tip. Then copy the last AI's message from chat, answer to it and instruct to continue the story.
+
+What I usually do is I start a session with an empty file and ask AI to start the game, providing any info about the PC. AI adds all necessary entities on the fly as the story develops.
+
+### Example
+1. A [simple example](https://pastebin.com/0HvKg5FZ) with custom instructions.
+2. An example for the sake of example, with visualization _(NOT part of the functionality)_
+
+> Add a a couple of cities, some npcs, couple locations around the city to explore, hide an artifact or two somewhere
+
+![image](https://github.com/user-attachments/assets/508d5903-2896-4665-a892-cdb7b81dfba6)
+
+## Installation
+Installation instruction provided by Claude with MCP knowledge and modified by me after testing. I don't have experience with JS, git and coding in general, so I would appreciate any assistance in organizing this section.
+
+### Prerequisites
+Node.js 18 or higher
+npm (included with Node.js)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/CheMiguel23/memorymesh.git
+cd memorymesh
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+```
+
+**IMPORTANT** from `\memorymesh\src` copy config and data folders to  created `\memorymesh\dist`
+
+### Configure with Claude Desktop
+Add the following to your Claude Desktop configuration file:
+
+#### MacOS
+`~/Library/Application\ Support/Claude/claude_desktop_config.json`
+
+```json
+  "mcpServers": {
+    "memorymesh": {
+      "command": "/usr/local/bin/node",
+      "args": [
+        "/usr/local/lib/node_modules/memorymesh/dist/index.js"
+      ]
+    }
+  }
+```
+
+#### Windows
+`%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+  "mcpServers": {
+    "memorymesh": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "[full_path_to_app]\\memorymesh\\dist\\index.js"
+      ]
+    }
+  }
+```
+
+### Verify Installation
+1. Restart Claude Desktop
+2. Look for "memorymesh" in the MCP servers list (🔌 icon)
+3. The server should show as connected
+
+## Known Issues
+1. You may occasionally see messages like "Error executing code: MCP error -32603: MCP error -32603: Error processing tool call: location "..." not found". These messages are enabled for debugging and do not affect functionality.
+2. The AI tends to avoid deleting nodes unless explicitly instructed to do so.
+3. Occasionally AI adds information in generic metada field that fits better in set properties, you can try `additionalProperties: false` to prevent that.
+
+## Contribution
+This project is a personal exploration into integrating structured data with AI reasoning capabilities. Contributions, feedback, and ideas are welcome to push it further or inspire new projects.
+
+95% of coding done by Claude, 95% of documentation done by ChatGPT.
+
+
+================================================
+File: /package.json
+================================================
+{
+  "name": "memorymesh",
+  "version": "0.1.3",
+  "description": "An MCP server that uses a knowledge graph to store and recall structured memory for AI models",
+  "license": "MIT",
+  "author": "CheMiguel23",
+  "homepage": "https://github.com/CheMiguel23/memorymesh",
+  "bugs": "https://github.com/CheMiguel23/memorymesh/issues",
+  "type": "module",
+  "bin": {
+    "mcp-server-memory": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.3",
+    "shx": "^0.3.4",
+    "typescript": "^5.6.2"
+  }
+}
+
+
+================================================
+File: /tsconfig.json
+================================================
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
+
+
+================================================
+File: /src/tools/tools.js
+================================================
+// src/tools/tools.js
+
+import {initializeDynamicTools} from './DynamicSchemaToolRegistry.js';
+
+/**
+ * @typedef {Object} Tool
+ * @property {string} name - The name of the tool.
+ * @property {string} description - A brief description of what the tool does.
+ * @property {Object} inputSchema - The JSON schema defining the tool's input parameters.
+ */
+
+/**
+ * Initializes dynamic tools and combines them with predefined generic tools.
+ *
+ * @type {Tool[]}
+ */
+const dynamicTools = await initializeDynamicTools();
+
+/**
+ * @type {Tool[]}
+ * @description Array of all tools, including dynamically generated schema-based tools and predefined generic tools.
+ */
+export const tools = [
+    // Get dynamically generated tools from schemas
+    ...dynamicTools.getTools(),
+
+    {
+        name: "add_nodes",
+        description: "Add multiple new nodes in the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                nodes: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            name: {type: "string", description: "The name of the node"},
+                            nodeType: {type: "string", description: "The type of the node"},
+                            metadata: {
+                                type: "array",
+                                items: {type: "string"},
+                                description: "An array of metadata contents associated with the node"
+                            },
+                        },
+                        required: ["name", "nodeType", "metadata"],
+                    },
+                },
+            },
+            required: ["nodes"],
+        },
+    },
+    {
+        name: "update_nodes",
+        description: "Update existing nodes in the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                nodes: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            name: {type: "string", description: "The name of the node to update"},
+                            nodeType: {type: "string", description: "The new type of the node"},
+                            metadata: {
+                                type: "array",
+                                items: {type: "string"},
+                                description: "An array of new metadata contents for the node"
+                            },
+                        },
+                        required: ["name"],
+                    },
+                },
+            },
+            required: ["nodes"],
+        },
+    },
+    {
+        name: "add_edges",
+        description: "Add multiple new edges between nodes in the knowledge graph. Edges should be in active voice",
+        inputSchema: {
+            type: "object",
+            properties: {
+                edges: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            from: {
+                                type: "string",
+                                description: "The name of the node where the edge starts"
+                            },
+                            to: {type: "string", description: "The name of the node where the edge ends"},
+                            edgeType: {type: "string", description: "The type of the edge"},
+                        },
+                        required: ["from", "to", "edgeType"],
+                    },
+                },
+            },
+            required: ["edges"],
+        },
+    },
+    {
+        name: "update_edges",
+        description: "Update existing edges in the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                edges: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            from: {
+                                type: "string",
+                                description: "Current source node name"
+                            },
+                            to: {
+                                type: "string",
+                                description: "Current target node name"
+                            },
+                            edgeType: {
+                                type: "string",
+                                description: "Current edge type"
+                            },
+                            newFrom: {
+                                type: "string",
+                                description: "New source node name"
+                            },
+                            newTo: {
+                                type: "string",
+                                description: "New target node name"
+                            },
+                            newEdgeType: {
+                                type: "string",
+                                description: "New edge type"
+                            },
+                        },
+                        required: ["from", "to", "edgeType"],
+                    },
+                },
+            },
+            required: ["edges"],
+        },
+    },
+    {
+        name: "add_metadata",
+        description: "Add new metadata to existing nodes in the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                metadata: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            nodeName: {
+                                type: "string",
+                                description: "The name of the node to add the metadata to"
+                            },
+                            contents: {
+                                type: "array",
+                                items: {type: "string"},
+                                description: "An array of metadata contents to add"
+                            },
+                        },
+                        required: ["nodeName", "contents"],
+                    },
+                },
+            },
+            required: ["metadata"],
+        },
+    },
+    {
+        name: "delete_nodes",
+        description: "Delete multiple nodes and their associated edges from the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                nodeNames: {
+                    type: "array",
+                    items: {type: "string"},
+                    description: "An array of node names to delete"
+                },
+            },
+            required: ["nodeNames"],
+        },
+    },
+    {
+        name: "delete_metadata",
+        description: "Delete specific metadata from nodes in the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                deletions: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            nodeName: {
+                                type: "string",
+                                description: "The name of the node containing the metadata"
+                            },
+                            metadata: {
+                                type: "array",
+                                items: {type: "string"},
+                                description: "An array of metadata to delete"
+                            },
+                        },
+                        required: ["nodeName", "metadata"],
+                    },
+                },
+            },
+            required: ["deletions"],
+        },
+    },
+    {
+        name: "delete_edges",
+        description: "Delete multiple edges from the knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {
+                edges: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            from: {
+                                type: "string",
+                                description: "The name of the node where the edge starts"
+                            },
+                            to: {type: "string", description: "The name of the node where the edge ends"},
+                            edgeType: {type: "string", description: "The type of the edge"},
+                        },
+                        required: ["from", "to", "edgeType"],
+                    },
+                    description: "An array of edges to delete"
+                },
+            },
+            required: ["edges"],
+        },
+    },
+    {
+        name: "read_graph",
+        description: "Read the entire knowledge graph",
+        inputSchema: {
+            type: "object",
+            properties: {},
+        },
+    },
+    {
+        name: "search_nodes",
+        description: "Search for nodes in the knowledge graph based on a query",
+        inputSchema: {
+            type: "object",
+            properties: {
+                query: {
+                    type: "string",
+                    description: "The search query to match against node names, types, and metadata content"
+                },
+            },
+            required: ["query"],
+        },
+    },
+    {
+        name: "open_nodes",
+        description: "Open specific nodes in the knowledge graph by their names",
+        inputSchema: {
+            type: "object",
+            properties: {
+                names: {
+                    type: "array",
+                    items: {type: "string"},
+                    description: "An array of node names to retrieve",
+                },
+            },
+            required: ["names"],
+        },
+    },
+];
+
+/**
+ * @type {DynamicSchemaToolRegistry}
+ * @description The registry instance managing dynamic schema-based tools.
+ */
+export {dynamicTools};
+
+
+================================================
+File: /src/tools/callToolHandler.js
+================================================
+// src/tools/callToolHandler.js
+import {dynamicTools} from './tools.js';
+import {ErrorCode, McpError} from "@modelcontextprotocol/sdk/types.js";
+
+/**
+ * Handles incoming tool call requests by routing them to the appropriate handler based on the tool name.
+ *
+ * @param {Object} request - The incoming request containing tool call parameters.
+ * @param {Object} knowledgeGraphManager - The manager instance for interacting with the knowledge graph.
+ * @returns {Promise<Object>} - The result of the tool call.
+ * @throws {McpError} If the tool is unknown or if processing the tool call fails.
+ */
+export async function handleCallToolRequest(request, knowledgeGraphManager) {
+    const {name, arguments: args} = request.params;
+
+    if (!args) {
+        throw new McpError(
+            ErrorCode.InvalidParams,
+            `No arguments provided for tool: ${name}`
+        );
+    }
+
+    try {
+        // First check if it's a generic tool
+        switch (name) {
+            case "add_nodes":
+                return {toolResult: await knowledgeGraphManager.addNodes(args.nodes)};
+
+            case "update_nodes":
+                return {toolResult: await knowledgeGraphManager.updateNodes(args.nodes)};
+
+            case "add_edges":
+                return {toolResult: await knowledgeGraphManager.addEdges(args.edges)};
+
+            case "update_edges":
+                return {toolResult: await knowledgeGraphManager.updateEdges(args.edges)};
+
+            case "add_metadata":
+                return {toolResult: await knowledgeGraphManager.addMetadata(args.metadata)};
+
+            case "delete_nodes":
+                await knowledgeGraphManager.deleteNodes(args.nodeNames);
+                return {toolResult: "Nodes deleted successfully"};
+
+            case "delete_metadata":
+                await knowledgeGraphManager.deleteMetadata(args.deletions);
+                return {toolResult: "Metadata deleted successfully"};
+
+            case "delete_edges":
+                await knowledgeGraphManager.deleteEdges(args.edges);
+                return {toolResult: "Edges deleted successfully"};
+
+            case "read_graph":
+                return {toolResult: await knowledgeGraphManager.readGraph()};
+
+            case "search_nodes":
+                return {toolResult: await knowledgeGraphManager.searchNodes(args.query)};
+
+            case "open_nodes":
+                return {toolResult: await knowledgeGraphManager.openNodes(args.names)};
+
+            default:
+                // Only try schema-based handling if it's not a generic tool
+                if (name.match(/^(add|update|delete)_/)) {
+                    return await dynamicTools.handleToolCall(name, args, knowledgeGraphManager);
+                }
+
+                throw new McpError(
+                    ErrorCode.MethodNotFound,
+                    `Unknown tool: ${name}`
+                );
+        }
+    } catch (error) {
+        // If it's already an MCP error, rethrow it
+        if (error instanceof McpError) {
+            throw error;
+        }
+        // Otherwise, wrap it in an MCP error
+        throw new McpError(
+            ErrorCode.InternalError,
+            `Error processing tool request: ${error.message}`
+        );
+    }
+}
+
+
+================================================
+File: /src/tools/DynamicSchemaToolRegistry.js
+================================================
+// src/tools/DynamicSchemaToolRegistry.js
+import {promises as fs} from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import {SchemaLoader} from '../schema/loader/schemaLoader.js';
+import {createSchemaNode, handleSchemaUpdate, handleSchemaDelete} from "../schema/loader/schemaProcessor.js";
+import {ErrorCode, McpError} from "@modelcontextprotocol/sdk/types.js";
+
+/**
+ * @class DynamicSchemaToolRegistry
+ * @classdesc Manages dynamic tools generated from schema definitions. Handles the initialization of schemas, generation of corresponding tools, and processing of tool calls.
+ */
+class DynamicSchemaToolRegistry {
+    /**
+     * Creates an instance of DynamicSchemaToolRegistry.
+     */
+    constructor() {
+        /**
+         * @private
+         * @type {Map<string, Object>}
+         * @description Stores schema names mapped to their SchemaBuilder instances.
+         */
+        this.schemas = new Map();
+        /**
+         * @private
+         * @type {Map<string, Object>}
+         * @description Caches generated tools mapped by their names.
+         */
+        this.toolsCache = new Map();
+    }
+
+    /**
+     * Initializes the registry by loading all schemas and generating corresponding tools.
+     *
+     * @returns {Promise<void>}
+     * @throws {Error} If initialization fails.
+     */
+    async initialize() {
+        try {
+            // Define __dirname for ES modules
+            const __dirname = path.dirname(fileURLToPath(import.meta.url));
+            const SCHEMAS_DIR = path.join(__dirname, '..', '..', 'src', 'config', 'schemas');
+
+            // Load schema files
+            const schemaFiles = await fs.readdir(SCHEMAS_DIR);
+
+            // Process each schema file
+            for (const file of schemaFiles) {
+                if (file.endsWith('.schema.json')) {
+                    const schemaName = path.basename(file, '.schema.json');
+                    const schema = await SchemaLoader.loadSchema(schemaName);
+                    this.schemas.set(schemaName, schema);
+                }
+            }
+
+            // Generate tools for each schema
+            for (const [schemaName, schema] of this.schemas.entries()) {
+                const tools = await this.generateToolsForSchema(schemaName, schema);
+                tools.forEach(tool => this.toolsCache.set(tool.name, tool));
+            }
+
+            console.error(`[DynamicSchemaTools] Initialized ${this.schemas.size} schemas and ${this.toolsCache.size} tools`);
+        } catch (error) {
+            console.error('[DynamicSchemaTools] Initialization error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves all generated tools.
+     *
+     * @returns {Array<Object>} - Array of tool objects.
+     */
+    getTools() {
+        return Array.from(this.toolsCache.values());
+    }
+
+    /**
+     * Generates add, update, and delete tools for a given schema.
+     *
+     * @param {string} schemaName - The name of the schema.
+     * @param {SchemaBuilder} schema - The SchemaBuilder instance.
+     * @returns {Promise<Array<Object>>} - Array of tool definitions for the schema.
+     */
+    async generateToolsForSchema(schemaName, schema) {
+        const tools = [];
+        const baseSchema = schema.build();
+
+        // Add tool
+        tools.push(baseSchema);
+
+        // Update tool
+        const updateSchema = schema.createUpdateSchema();
+        tools.push(updateSchema);
+
+        // Delete tool
+        const deleteSchema = {
+            name: `delete_${schemaName}`,
+            description: `Delete
+            an existing
+            ${schemaName}
+            from
+            the
+            knowledge
+            graph`,
+            inputSchema: {
+                type: "object",
+                properties: {
+                    [`delete_${schemaName}`]: {
+                        type: "object",
+                        properties: {
+                            name: {
+                                type: "string",
+                                description: `The name of the ${schemaName} to delete`
+                            }
+                        },
+                        required: ["name"]
+                    }
+                },
+                required: [`delete_${schemaName}`]
+            }
+        };
+        tools.push(deleteSchema);
+
+        return tools;
+    }
+
+    /**
+     * Handles tool calls for dynamically generated schema-based tools.
+     *
+     * @param {string} toolName - The name of the tool being called.
+     * @param {Object} args - The arguments provided for the tool call.
+     * @param {Object} knowledgeGraphManager - The manager instance for interacting with the knowledge graph.
+     * @returns {Promise<Object>} - The result of the tool call.
+     * @throws {McpError} If the tool name format is invalid or if processing the tool call fails.
+     */
+    async handleToolCall(toolName, args, knowledgeGraphManager) {
+        const match = toolName.match(/^(add|update|delete)_(.+)$/);
+        if (!match) {
+            throw new McpError(
+                ErrorCode.MethodNotFound,
+                `Invalid tool name format: ${toolName}`
+            );
+        }
+
+        const [, operation, schemaName] = match;
+        const schema = this.schemas.get(schemaName);
+
+        if (!schema) {
+            throw new McpError(
+                ErrorCode.MethodNotFound,
+                `Schema not found for: ${schemaName}`
+            );
+        }
+
+        try {
+            switch (operation) {
+                case 'add': {
+                    const {nodes, edges} = await createSchemaNode(
+                        args[schemaName],
+                        schema.build(),
+                        schemaName
+                    );
+                    await knowledgeGraphManager.addNodes(nodes);
+                    await knowledgeGraphManager.addEdges(edges);
+                    return {toolResult: {nodes, edges}};
+                }
+
+                case 'update': {
+                    const {updatedNodes} = await handleSchemaUpdate(
+                        args[`update_${schemaName}`],
+                        schema.build(),
+                        schemaName,
+                        knowledgeGraphManager
+                    );
+                    return {toolResult: {updatedNodes}};
+                }
+
+                case 'delete': {
+                    const {name} = args[`delete_${schemaName}`];
+                    if (!name) {
+                        throw new McpError(
+                            ErrorCode.InvalidParams,
+                            `Name is required to delete a ${schemaName}`
+                        );
+                    }
+                    const result = await handleSchemaDelete(
+                        name,
+                        schemaName,
+                        knowledgeGraphManager
+                    );
+                    return {toolResult: result};
+                }
+
+                default:
+                    throw new McpError(
+                        ErrorCode.MethodNotFound,
+                        `Unknown operation: ${operation}`
+                    );
+            }
+        } catch (error) {
+            // If it's already an MCP error, rethrow it
+            if (error instanceof McpError) {
+                throw error;
+            }
+            // Otherwise, wrap it in an MCP error
+            throw new McpError(
+                ErrorCode.InternalError,
+                `Error processing tool call: ${error.message}`
+            );
+        }
+    }
+}
+
+// Create singleton instance
+const dynamicSchemaTools = new DynamicSchemaToolRegistry();
+
+/**
+ * Initializes the dynamic tools registry.
+ *
+ * @returns {Promise<DynamicSchemaToolRegistry>} - The initialized DynamicSchemaToolRegistry instance.
+ */
+export async function initializeDynamicTools() {
+    await dynamicSchemaTools.initialize();
+    return dynamicSchemaTools;
+}
+
+
+================================================
+File: /src/core/managers/implementations/EdgeManager.js
+================================================
+// src/managers/implementations/EdgeManager.js
+import {IEdgeManager} from '../interfaces/IEdgeManager.js';
+
+/**
+ * @class EdgeManager
+ * @extends IEdgeManager
+ * @classdesc Implements edge-related operations for the knowledge graph, including adding, updating, deleting, and retrieving edges.
+ */
+export class EdgeManager extends IEdgeManager {
+    /**
+     * Creates an instance of EdgeManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     */
+    constructor(storage) {
+        super(storage);
+    }
+
+    /**
+     * Adds new edges to the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to add. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<Array<Object>>} - Array of newly added edges.
+     * @throws {Error} If source or target nodes are not found or if adding edges fails.
+     */
+    async addEdges(edges) {
+        try {
+            this.emit('beforeAddEdges', {edges});
+
+            const graph = await this.storage.loadGraph();
+            const newEdges = edges.filter(edge =>
+                !graph.edges.some(existing =>
+                    existing.from === edge.from &&
+                    existing.to === edge.to &&
+                    existing.edgeType === edge.edgeType
+                )
+            );
+
+            if (newEdges.length === 0) {
+                return [];
+            }
+
+            // Verify that nodes exist
+            const nodeNames = new Set(graph.nodes.map(node => node.name));
+            for (const edge of newEdges) {
+                if (!nodeNames.has(edge.from)) {
+                    throw new Error(`Source node "${edge.from}" not found`);
+                }
+                if (!nodeNames.has(edge.to)) {
+                    throw new Error(`Target node "${edge.to}" not found`);
+                }
+            }
+
+            graph.edges.push(...newEdges);
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterAddEdges', {edges: newEdges});
+            return newEdges;
+        } catch (error) {
+            this.emit('error', {operation: 'addEdges', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Updates existing edges in the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects with updates. Each edge must have `from`, `to`, and `edgeType` to identify it, and can include `newFrom`, `newTo`, and/or `newEdgeType` for updates.
+     * @returns {Promise<Array<Object>>} - Array of updated edges.
+     * @throws {Error} If the edge to update is not found, if the new source or target nodes are not found, or if updating edges fails.
+     */
+    async updateEdges(edges) {
+        try {
+            this.emit('beforeUpdateEdges', {edges});
+
+            const graph = await this.storage.loadGraph();
+            const updatedEdges = [];
+
+            for (const updateEdge of edges) {
+                const edgeIndex = graph.edges.findIndex(existing =>
+                    existing.from === updateEdge.from &&
+                    existing.to === updateEdge.to &&
+                    existing.edgeType === updateEdge.edgeType
+                );
+
+                if (edgeIndex === -1) {
+                    throw new Error(`Edge not found: ${updateEdge.from} -> ${updateEdge.to} (${updateEdge.edgeType})`);
+                }
+
+                // Verify that nodes exist for any updated node references
+                const nodeNames = new Set(graph.nodes.map(node => node.name));
+                if (updateEdge.newFrom && !nodeNames.has(updateEdge.newFrom)) {
+                    throw new Error(`Source node "${updateEdge.newFrom}" not found`);
+                }
+                if (updateEdge.newTo && !nodeNames.has(updateEdge.newTo)) {
+                    throw new Error(`Target node "${updateEdge.newTo}" not found`);
+                }
+
+                const updatedEdge = {
+                    ...graph.edges[edgeIndex],
+                    from: updateEdge.newFrom || graph.edges[edgeIndex].from,
+                    to: updateEdge.newTo || graph.edges[edgeIndex].to,
+                    edgeType: updateEdge.newEdgeType || graph.edges[edgeIndex].edgeType
+                };
+
+                graph.edges[edgeIndex] = updatedEdge;
+                updatedEdges.push(updatedEdge);
+            }
+
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterUpdateEdges', {edges: updatedEdges});
+            return updatedEdges;
+        } catch (error) {
+            this.emit('error', {operation: 'updateEdges', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Deletes edges from the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to delete. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<void>}
+     * @throws {Error} If deleting edges fails.
+     */
+    async deleteEdges(edges) {
+        try {
+            this.emit('beforeDeleteEdges', {edges});
+
+            const graph = await this.storage.loadGraph();
+            const initialEdgeCount = graph.edges.length;
+
+            graph.edges = graph.edges.filter(existing =>
+                !edges.some(edge =>
+                    existing.from === edge.from &&
+                    existing.to === edge.to &&
+                    existing.edgeType === edge.edgeType
+                )
+            );
+
+            await this.storage.saveGraph(graph);
+
+            const deletedCount = initialEdgeCount - graph.edges.length;
+            this.emit('afterDeleteEdges', {deletedCount});
+        } catch (error) {
+            this.emit('error', {operation: 'deleteEdges', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves edges from the knowledge graph based on filter criteria, using an optimized
+     * index-based approach to minimize memory usage and improve query performance.
+     *
+     * @param {Object} [filter] - Optional filter criteria. If not provided, returns all edges.
+     * @param {string} [filter.from] - Filter edges originating from this node. Utilizes the byFrom index for O(1) lookup.
+     * @param {string} [filter.to] - Filter edges targeting this node. Utilizes the byTo index for O(1) lookup.
+     * @param {string} [filter.edgeType] - Filter edges of this type. Utilizes the byType index for O(1) lookup.
+     * @returns {Promise<Array<Object>>} - Array of edges matching all provided filter criteria. Returns an empty array if no matches found.
+     * @throws {Error} If retrieving edges fails or if index access fails.
+     */
+    async getEdges(filter) {
+        try {
+            // If no filter, return all edges (unchanged behavior)
+            if (!filter) {
+                const graph = await this.storage.loadGraph();
+                return graph.edges;
+            }
+
+            // Get candidate edge IDs using indices
+            let candidateIds = null;
+
+            // Step 1: Filter by 'from' node
+            if (filter.from) {
+                candidateIds = this.storage.edgeIndex.byFrom.get(filter.from) || new Set();
+                // If we have a 'from' filter but no matches, return empty array
+                if (candidateIds.size === 0) return [];
+            }
+
+            // Step 2: Filter by 'to' node
+            if (filter.to) {
+                const toIds = this.storage.edgeIndex.byTo.get(filter.to) || new Set();
+                if (candidateIds) {
+                    // Intersect with existing candidates
+                    candidateIds = new Set([...candidateIds].filter(id => toIds.has(id)));
+                } else {
+                    // First filter, use all 'to' matches
+                    candidateIds = toIds;
+                }
+                // If intersection is empty, return empty array
+                if (candidateIds.size === 0) return [];
+            }
+
+            // Step 3: Filter by edge type
+            if (filter.edgeType) {
+                const typeIds = this.storage.edgeIndex.byType.get(filter.edgeType) || new Set();
+                if (candidateIds) {
+                    // Intersect with existing candidates
+                    candidateIds = new Set([...candidateIds].filter(id => typeIds.has(id)));
+                } else {
+                    // First filter, use all type matches
+                    candidateIds = typeIds;
+                }
+                // If intersection is empty, return empty array
+                if (candidateIds.size === 0) return [];
+            }
+
+            // If we have no candidates after all filters, return empty array
+            if (!candidateIds || candidateIds.size === 0) return [];
+
+            // Load only the filtered edges
+            const edges = await this.storage.loadEdgesByIds(Array.from(candidateIds));
+            return edges;
+        } catch (error) {
+            this.emit('error', {operation: 'getEdges', error});
+            throw error;
+        }
+    }
+}
+
+
+================================================
+File: /src/core/managers/implementations/NodeManager.js
+================================================
+// src/managers/implementations/NodeManager.js
+import {INodeManager} from '../interfaces/INodeManager.js';
+
+/**
+ * @class NodeManager
+ * @extends INodeManager
+ * @classdesc Implements node-related operations for the knowledge graph, including adding, updating, deleting, and retrieving nodes.
+ */
+export class NodeManager extends INodeManager {
+    /**
+     * Creates an instance of NodeManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     */
+    constructor(storage) {
+        super(storage);
+    }
+
+    /**
+     * Adds new nodes to the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects to add. Each node should have at least a `name` and `nodeType`.
+     * @returns {Promise<Array<Object>>} - Array of newly added nodes.
+     * @throws {Error} If adding nodes fails.
+     */
+    async addNodes(nodes) {
+        try {
+            this.emit('beforeAddNodes', {nodes});
+
+            const graph = await this.storage.loadGraph();
+            const newNodes = nodes.filter(node =>
+                !graph.nodes.some(existing => existing.name === node.name)
+            );
+
+            if (newNodes.length === 0) {
+                return [];
+            }
+
+            graph.nodes.push(...newNodes);
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterAddNodes', {nodes: newNodes});
+            return newNodes;
+        } catch (error) {
+            this.emit('error', {operation: 'addNodes', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Updates existing nodes in the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects with updates. Each node must have a `name` to identify it.
+     * @returns {Promise<Array<Object>>} - Array of updated nodes.
+     * @throws {Error} If the node to update is not found or if updating nodes fails.
+     */
+    async updateNodes(nodes) {
+        try {
+            this.emit('beforeUpdateNodes', {nodes});
+
+            const graph = await this.storage.loadGraph();
+            const updatedNodes = [];
+
+            for (const updateNode of nodes) {
+                const node = graph.nodes.find(n => n.name === updateNode.name);
+                if (!node) {
+                    throw new Error(`Node with name "${updateNode.name}" not found`);
+                }
+
+                Object.assign(node, updateNode);
+                updatedNodes.push(node);
+            }
+
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterUpdateNodes', {nodes: updatedNodes});
+            return updatedNodes;
+        } catch (error) {
+            this.emit('error', {operation: 'updateNodes', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Deletes nodes and their associated edges from the knowledge graph.
+     *
+     * @param {Array<string>} nodeNames - Array of node names to delete.
+     * @returns {Promise<void>}
+     * @throws {Error} If node names are not an array or if deleting nodes fails.
+     */
+    async deleteNodes(nodeNames) {
+        try {
+            if (!Array.isArray(nodeNames)) {
+                throw new Error('Node names must be an array');
+            }
+
+            this.emit('beforeDeleteNodes', {nodeNames});
+
+            const graph = await this.storage.loadGraph();
+            const initialNodeCount = graph.nodes.length;
+
+            graph.nodes = graph.nodes.filter(node => !nodeNames.includes(node.name));
+            graph.edges = graph.edges.filter(edge =>
+                !nodeNames.includes(edge.from) && !nodeNames.includes(edge.to)
+            );
+
+            await this.storage.saveGraph(graph);
+
+            const deletedCount = initialNodeCount - graph.nodes.length;
+            this.emit('afterDeleteNodes', {deletedCount});
+        } catch (error) {
+            this.emit('error', {operation: 'deleteNodes', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves specific nodes from the knowledge graph by their names.
+     *
+     * @param {Array<string>} nodeNames - Array of node names to retrieve.
+     * @returns {Promise<Array<Object>>} - Array of nodes matching the provided names.
+     * @throws {Error} If retrieving nodes fails.
+     */
+    async getNodes(nodeNames) {
+        try {
+            const graph = await this.storage.loadGraph();
+            return graph.nodes.filter(node => nodeNames.includes(node.name));
+        } catch (error) {
+            this.emit('error', {operation: 'getNodes', error});
+            throw error;
+        }
+    }
+}
+
+
+================================================
+File: /src/core/managers/implementations/SearchManager.js
+================================================
+// src/managers/implementations/SearchManager.js
+import {ISearchManager} from '../interfaces/ISearchManager.js';
+
+/**
+ * @class SearchManager
+ * @extends ISearchManager
+ * @classdesc Implements search-related operations for the knowledge graph, including searching nodes based on queries and retrieving specific nodes.
+ */
+export class SearchManager extends ISearchManager {
+    /**
+     * Creates an instance of SearchManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     */
+    constructor(storage) {
+        super(storage);
+    }
+
+    /**
+     * Searches for nodes in the knowledge graph based on a query.
+     *
+     * @param {string} query - The search query string.
+     * @returns {Promise<Object>} - Filtered graph containing matching nodes and their edges.
+     * @throws {Error} If the search operation fails.
+     */
+    async searchNodes(query) {
+        try {
+            this.emit('beforeSearch', {query});
+
+            const graph = await this.storage.loadGraph();
+            const filteredNodes = graph.nodes.filter(e =>
+                e.name.toLowerCase().includes(query.toLowerCase()) ||
+                e.nodeType.toLowerCase().includes(query.toLowerCase()) ||
+                e.metadata.some(o => o.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            const filteredNodeNames = new Set(filteredNodes.map(e => e.name));
+            const filteredEdges = graph.edges.filter(r =>
+                filteredNodeNames.has(r.from) && filteredNodeNames.has(r.to)
+            );
+
+            const result = {
+                nodes: filteredNodes,
+                edges: filteredEdges
+            };
+
+            this.emit('afterSearch', result);
+            return result;
+        } catch (error) {
+            this.emit('error', {operation: 'searchNodes', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves specific nodes from the knowledge graph by their names.
+     *
+     * @param {Array<string>} names - Array of node names to retrieve.
+     * @returns {Promise<Object>} - Filtered graph containing specified nodes and their edges.
+     * @throws {Error} If retrieving nodes fails.
+     */
+    async openNodes(names) {
+        try {
+            this.emit('beforeOpenNodes', {names});
+
+            const graph = await this.storage.loadGraph();
+            const filteredNodes = graph.nodes.filter(e =>
+                names.includes(e.name)
+            );
+
+            const filteredNodeNames = new Set(filteredNodes.map(e => e.name));
+            const filteredEdges = graph.edges.filter(r =>
+                filteredNodeNames.has(r.from) && filteredNodeNames.has(r.to)
+            );
+
+            const result = {
+                nodes: filteredNodes,
+                edges: filteredEdges
+            };
+
+            this.emit('afterOpenNodes', result);
+            return result;
+        } catch (error) {
+            this.emit('error', {operation: 'openNodes', error});
+            throw error;
+        }
+    }
+}
+
+
+================================================
+File: /src/core/managers/implementations/MetadataManager.js
+================================================
+// src/managers/implementations/MetadataManager.js
+import {IMetadataManager} from '../interfaces/IMetadataManager.js';
+
+/**
+ * @class MetadataManager
+ * @extends IMetadataManager
+ * @classdesc Implements metadata-related operations for the knowledge graph, including adding, deleting, and retrieving metadata associated with nodes.
+ */
+export class MetadataManager extends IMetadataManager {
+    /**
+     * Creates an instance of MetadataManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     */
+    constructor(storage) {
+        super(storage);
+    }
+
+    /**
+     * Adds metadata to existing nodes.
+     *
+     * @param {Array<Object>} metadata - Array of metadata objects to add. Each object should have `nodeName` and `contents`.
+     * @returns {Promise<Array<Object>>} - Results of metadata additions.
+     * @throws {Error} If the specified node is not found or adding metadata fails.
+     */
+    async addMetadata(metadata) {
+        try {
+            this.emit('beforeAddMetadata', {metadata});
+
+            const graph = await this.storage.loadGraph();
+            const results = metadata.map(o => {
+                const node = graph.nodes.find(e => e.name === o.nodeName);
+                if (!node) {
+                    throw new Error(`Node with name ${o.nodeName} not found`);
+                }
+
+                if (!Array.isArray(node.metadata)) {
+                    node.metadata = [];
+                }
+
+                const newMetadata = o.contents.filter(content =>
+                    !node.metadata.includes(content)
+                );
+
+                node.metadata.push(...newMetadata);
+                return {
+                    nodeName: o.nodeName,
+                    addedMetadata: newMetadata
+                };
+            });
+
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterAddMetadata', {results});
+            return results;
+        } catch (error) {
+            this.emit('error', {operation: 'addMetadata', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Deletes metadata from nodes.
+     *
+     * @param {Array<Object>} deletions - Array of metadata deletion objects. Each object should have `nodeName` and `metadata`.
+     * @returns {Promise<void>}
+     * @throws {Error} If deleting metadata fails.
+     */
+    async deleteMetadata(deletions) {
+        try {
+            this.emit('beforeDeleteMetadata', {deletions});
+
+            const graph = await this.storage.loadGraph();
+
+            deletions.forEach(d => {
+                const node = graph.nodes.find(e => e.name === d.nodeName);
+                if (node) {
+                    node.metadata = node.metadata.filter(o =>
+                        !d.metadata.includes(o)
+                    );
+                }
+            });
+
+            await this.storage.saveGraph(graph);
+
+            this.emit('afterDeleteMetadata', {deletions});
+        } catch (error) {
+            this.emit('error', {operation: 'deleteMetadata', error});
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves metadata for a specific node.
+     *
+     * @param {string} nodeName - Name of the node to retrieve metadata for.
+     * @returns {Promise<Array<string>>} - Array of metadata contents associated with the node.
+     * @throws {Error} If the node is not found or retrieving metadata fails.
+     */
+    async getMetadata(nodeName) {
+        try {
+            const graph = await this.storage.loadGraph();
+            const node = graph.nodes.find(e => e.name === nodeName);
+
+            if (!node) {
+                throw new Error(`Node with name ${nodeName} not found`);
+            }
+
+            return node.metadata || [];
+        } catch (error) {
+            this.emit('error', {operation: 'getMetadata', error});
+            throw error;
+        }
+    }
+}
+
+
+================================================
+File: /src/core/managers/ManagerFactory.js
+================================================
+// src/managers/ManagerFactory.js
+
+import {NodeManager} from './implementations/NodeManager.js';
+import {EdgeManager} from './implementations/EdgeManager.js';
+import {MetadataManager} from './implementations/MetadataManager.js';
+import {SearchManager} from './implementations/SearchManager.js';
+
+/**
+ * @class ManagerFactory
+ * @classdesc Factory class responsible for creating instances of various manager classes used in the knowledge graph.
+ */
+export class ManagerFactory {
+    /**
+     * Creates a new instance of NodeManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     * @returns {NodeManager} - A new NodeManager instance.
+     */
+    static createNodeManager(storage) {
+        return new NodeManager(storage);
+    }
+
+    /**
+     * Creates a new instance of EdgeManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     * @returns {EdgeManager} - A new EdgeManager instance.
+     */
+    static createEdgeManager(storage) {
+        return new EdgeManager(storage);
+    }
+
+    /**
+     * Creates a new instance of MetadataManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     * @returns {MetadataManager} - A new MetadataManager instance.
+     */
+    static createMetadataManager(storage) {
+        return new MetadataManager(storage);
+    }
+
+    /**
+     * Creates a new instance of SearchManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     * @returns {SearchManager} - A new SearchManager instance.
+     */
+    static createSearchManager(storage) {
+        return new SearchManager(storage);
+    }
+}
+
+
+================================================
+File: /src/core/managers/interfaces/IMetadataManager.js
+================================================
+// src/managers/interfaces/IMetadataManager.js
+import {IManager} from './IManager.js';
+
+/**
+ * @class IMetadataManager
+ * @extends IManager
+ * @classdesc Interface for metadata-related operations in the knowledge graph. Defines the contract for managing metadata, including adding, deleting, and retrieving metadata for nodes.
+ */
+export class IMetadataManager extends IManager {
+    /**
+     * Adds metadata to existing nodes.
+     *
+     * @param {Array<Object>} metadata - Array of metadata objects to add. Each object should have `nodeName` and `contents`.
+     * @returns {Promise<Array<Object>>} - Promise resolving to the results of metadata additions.
+     * @throws {Error} Method not implemented.
+     */
+    async addMetadata(metadata) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Deletes metadata from nodes.
+     *
+     * @param {Array<Object>} deletions - Array of metadata deletion objects. Each object should have `nodeName` and `metadata`.
+     * @returns {Promise<void>} - Promise resolving when deletion is complete.
+     * @throws {Error} Method not implemented.
+     */
+    async deleteMetadata(deletions) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Retrieves metadata for a specific node.
+     *
+     * @param {string} nodeName - Name of the node to retrieve metadata for.
+     * @returns {Promise<Array<string>>} - Promise resolving to an array of metadata contents associated with the node.
+     * @throws {Error} Method not implemented.
+     */
+    async getMetadata(nodeName) {
+        throw new Error('Method not implemented');
+    }
+}
+
+
+================================================
+File: /src/core/managers/interfaces/INodeManager.js
+================================================
+// src/managers/interfaces/INodeManager.js
+import {IManager} from './IManager.js';
+
+/**
+ * @class INodeManager
+ * @extends IManager
+ * @classdesc Interface for node-related operations in the knowledge graph. Defines the contract for managing nodes, including adding, updating, deleting, and retrieving nodes.
+ */
+export class INodeManager extends IManager {
+    /**
+     * Adds new nodes to the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects to add. Each node should have at least a `name` and `nodeType`.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of newly added nodes.
+     * @throws {Error} Method not implemented.
+     */
+    async addNodes(nodes) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Updates existing nodes in the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects with updates. Each node must have a `name` to identify it.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of updated nodes.
+     * @throws {Error} Method not implemented.
+     */
+    async updateNodes(nodes) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Deletes nodes from the knowledge graph.
+     *
+     * @param {Array<string>} nodeNames - Array of node names to delete.
+     * @returns {Promise<void>} - Promise resolving when deletion is complete.
+     * @throws {Error} Method not implemented.
+     */
+    async deleteNodes(nodeNames) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Retrieves specific nodes from the knowledge graph by their names.
+     *
+     * @param {Array<string>} nodeNames - Array of node names to retrieve.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of nodes matching the provided names.
+     * @throws {Error} Method not implemented.
+     */
+    async getNodes(nodeNames) {
+        throw new Error('Method not implemented');
+    }
+}
+
+
+================================================
+File: /src/core/managers/interfaces/IManager.js
+================================================
+// src/core/managers/interfaces/IManager.js
+import {EventEmitter} from '../../events/EventEmitter.js';
+
+/**
+ * @class IManager
+ * @extends EventEmitter
+ * @classdesc Abstract base class for all manager interfaces. Provides event emission capabilities and implements common initialization.
+ */
+export class IManager extends EventEmitter {
+    /**
+     * Creates an instance of IManager.
+     *
+     * @param {Object} storage - The storage mechanism to use for persisting the knowledge graph.
+     * @throws {Error} If attempting to instantiate the abstract class directly.
+     */
+    constructor(storage) {
+        super();
+        if (new.target === IManager) {
+            throw new Error('IManager is an abstract class');
+        }
+        /**
+         * @protected
+         * @type {Object}
+         * @description The storage instance used by the manager.
+         */
+        this.storage = storage;
+    }
+
+    /**
+     * Initializes the manager by emitting the 'initialized' event.
+     * Common implementation for all manager classes.
+     *
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        this.emit('initialized', {manager: this.constructor.name});
+    }
+}
+
+================================================
+File: /src/core/managers/interfaces/ISearchManager.js
+================================================
+// src/managers/interfaces/ISearchManager.js
+import {IManager} from './IManager.js';
+
+/**
+ * @class ISearchManager
+ * @extends IManager
+ * @classdesc Interface for search-related operations in the knowledge graph. Defines the contract for searching nodes based on queries and retrieving specific nodes.
+ */
+export class ISearchManager extends IManager {
+    /**
+     * Searches for nodes in the knowledge graph based on a query.
+     *
+     * @param {string} query - The search query string.
+     * @returns {Promise<Object>} - Promise resolving to a filtered graph containing matching nodes and their edges.
+     * @throws {Error} Method not implemented.
+     */
+    async searchNodes(query) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Retrieves specific nodes from the knowledge graph by their names.
+     *
+     * @param {Array<string>} names - Array of node names to retrieve.
+     * @returns {Promise<Object>} - Promise resolving to a filtered graph containing specified nodes and their edges.
+     * @throws {Error} Method not implemented.
+     */
+    async openNodes(names) {
+        throw new Error('Method not implemented');
+    }
+}
+
+
+================================================
+File: /src/core/managers/interfaces/IEdgeManager.js
+================================================
+// src/managers/interfaces/IEdgeManager.js
+import {IManager} from './IManager.js';
+
+/**
+ * @class IEdgeManager
+ * @extends IManager
+ * @classdesc Interface for edge-related operations in the knowledge graph. Defines the contract for managing edges, including adding, updating, deleting, and retrieving edges.
+ */
+export class IEdgeManager extends IManager {
+    /**
+     * Adds new edges to the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to add. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of newly added edges.
+     * @throws {Error} Method not implemented.
+     */
+    async addEdges(edges) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Updates existing edges in the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects with updates. Each edge must have `from`, `to`, and `edgeType` to identify it, and can include `newFrom`, `newTo`, and/or `newEdgeType` for updates.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of updated edges.
+     * @throws {Error} Method not implemented.
+     */
+    async updateEdges(edges) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Deletes edges from the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to delete. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<void>} - Promise resolving when deletion is complete.
+     * @throws {Error} Method not implemented.
+     */
+    async deleteEdges(edges) {
+        throw new Error('Method not implemented');
+    }
+
+    /**
+     * Retrieves edges from the knowledge graph based on filter criteria.
+     *
+     * @param {Object} [filter] - Optional filter criteria.
+     * @param {string} [filter.from] - Filter edges originating from this node.
+     * @param {string} [filter.to] - Filter edges targeting this node.
+     * @param {string} [filter.edgeType] - Filter edges of this type.
+     * @returns {Promise<Array<Object>>} - Promise resolving to an array of edges matching the filter criteria.
+     * @throws {Error} Method not implemented.
+     */
+    async getEdges(filter) {
+        throw new Error('Method not implemented');
+    }
+}
+
+
+================================================
+File: /src/core/storage/JsonLineStorage.js
+================================================
+// src/storage/JsonLineStorage.js
+import {promises as fs} from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+
+/**
+ * @class JsonLineStorage
+ * @classdesc Handles persistent storage of the knowledge graph using a JSON Lines file format with optimized indexing.
+ * Each line in the file represents a node or an edge in JSON format. The class maintains in-memory indices
+ * for efficient edge querying and retrieval.
+ */
+export class JsonLineStorage {
+    /**
+     * Creates an instance of JsonLineStorage and initializes the indexing structures.
+     *
+     * @throws {Error} If initialization of storage directories fails
+     */
+    constructor() {
+        /**
+         * @private
+         * @type {Object}
+         * @property {Map<string, Set<string>>} byFrom - Maps source nodes to their edge IDs
+         * @property {Map<string, Set<string>>} byTo - Maps target nodes to their edge IDs
+         * @property {Map<string, Set<string>>} byType - Maps edge types to their edge IDs
+         */
+        this.edgeIndex = {
+            byFrom: new Map(),
+            byTo: new Map(),
+            byType: new Map()
+        };
+
+        /**
+         * @private
+         * @type {Map<string, Object>}
+         * @description Cache storing edge objects by their unique IDs
+         */
+        this.edgeCache = new Map();
+    }
+
+    /**
+     * Loads the entire knowledge graph from storage and builds the edge indices.
+     *
+     * @returns {Promise<Object>} The complete graph containing nodes and edges with built indices
+     * @throws {Error} If reading the file fails for reasons other than the file not existing
+     */
+    async loadGraph() {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const MEMORY_FILE_PATH = path.join(__dirname, '../../data/memory.json');
+
+        try {
+            const data = await fs.readFile(MEMORY_FILE_PATH, "utf-8");
+            const lines = data.split("\n").filter(line => line.trim() !== "");
+
+            // Clear existing indices before rebuilding
+            this.clearIndices();
+
+            return lines.reduce((graph, line) => {
+                const item = JSON.parse(line);
+                if (item.type === "node") {
+                    graph.nodes.push(item);
+                }
+                if (item.type === "edge") {
+                    graph.edges.push(item);
+                    this.indexEdge(item);
+                }
+                return graph;
+            }, {nodes: [], edges: []});
+        } catch (error) {
+            if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
+                return {nodes: [], edges: []};
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Saves the entire knowledge graph to storage and rebuilds indices.
+     *
+     * @param {Object} graph - The graph object containing nodes and edges to save
+     * @returns {Promise<void>}
+     * @throws {Error} If writing to the file fails
+     */
+    async saveGraph(graph) {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const MEMORY_FILE_PATH = path.join(__dirname, '../../data/memory.json');
+
+        // Clear and rebuild indices
+        this.clearIndices();
+        graph.edges.forEach(edge => this.indexEdge(edge));
+
+        const lines = [
+            ...graph.nodes.map(e => JSON.stringify({type: "node", ...e})),
+            ...graph.edges.map(r => JSON.stringify({type: "edge", ...r})),
+        ];
+        await fs.writeFile(MEMORY_FILE_PATH, lines.join("\n"));
+    }
+
+    /**
+     * Loads specific edges by their IDs from the cache.
+     *
+     * @param {Array<string>} edgeIds - Array of edge IDs to retrieve
+     * @returns {Promise<Array<Object>>} Array of edge objects
+     * @throws {Error} If any requested edge ID is not found in the cache
+     */
+    async loadEdgesByIds(edgeIds) {
+        return edgeIds
+            .map(id => this.edgeCache.get(id))
+            .filter(edge => edge !== undefined);
+    }
+
+    /**
+     * Indexes a single edge by adding it to all relevant indices.
+     *
+     * @private
+     * @param {Object} edge - The edge object to index
+     * @param {string} edge.from - Source node name
+     * @param {string} edge.to - Target node name
+     * @param {string} edge.edgeType - Type of the edge
+     */
+    indexEdge(edge) {
+        const edgeId = this.generateEdgeId(edge);
+
+        // Index by 'from' node
+        if (!this.edgeIndex.byFrom.has(edge.from)) {
+            this.edgeIndex.byFrom.set(edge.from, new Set());
+        }
+        this.edgeIndex.byFrom.get(edge.from).add(edgeId);
+
+        // Index by 'to' node
+        if (!this.edgeIndex.byTo.has(edge.to)) {
+            this.edgeIndex.byTo.set(edge.to, new Set());
+        }
+        this.edgeIndex.byTo.get(edge.to).add(edgeId);
+
+        // Index by edge type
+        if (!this.edgeIndex.byType.has(edge.edgeType)) {
+            this.edgeIndex.byType.set(edge.edgeType, new Set());
+        }
+        this.edgeIndex.byType.get(edge.edgeType).add(edgeId);
+
+        // Cache the edge
+        this.edgeCache.set(edgeId, edge);
+    }
+
+    /**
+     * Generates a unique ID for an edge based on its properties.
+     *
+     * @private
+     * @param {Object} edge - The edge object
+     * @param {string} edge.from - Source node name
+     * @param {string} edge.to - Target node name
+     * @param {string} edge.edgeType - Type of the edge
+     * @returns {string} Unique edge identifier
+     */
+    generateEdgeId(edge) {
+        return `${edge.from}|${edge.to}|${edge.edgeType}`;
+    }
+
+    /**
+     * Clears all edge indices and cache.
+     *
+     * @private
+     */
+    clearIndices() {
+        this.edgeIndex.byFrom.clear();
+        this.edgeIndex.byTo.clear();
+        this.edgeIndex.byType.clear();
+        this.edgeCache.clear();
+    }
+
+    /**
+     * Validates that an edge's referenced nodes exist in the graph.
+     *
+     * @private
+     * @param {Object} edge - The edge to validate
+     * @param {Set<string>} nodeNames - Set of existing node names
+     * @throws {Error} If either the source or target node doesn't exist
+     */
+    validateEdgeNodes(edge, nodeNames) {
+        if (!nodeNames.has(edge.from)) {
+            throw new Error(`Source node "${edge.from}" not found`);
+        }
+        if (!nodeNames.has(edge.to)) {
+            throw new Error(`Target node "${edge.to}" not found`);
+        }
+    }
+}
+
+================================================
+File: /src/core/events/EventEmitter.js
+================================================
+// src/events/EventEmitter.js
+
+/**
+ * @class EventEmitter
+ * @classdesc A simple event emitter implementation for managing event listeners and emitting events.
+ */
+export class EventEmitter {
+    /**
+     * Creates an instance of EventEmitter.
+     */
+    constructor() {
+        /**
+         * @private
+         * @type {Map<string, Set<Function>>}
+         * @description Maps event names to their respective sets of listener functions.
+         */
+        this.listeners = new Map();
+
+        // Bind methods to ensure correct 'this' context
+        this.on = this.on.bind(this);
+        this.off = this.off.bind(this);
+        this.once = this.once.bind(this);
+        this.emit = this.emit.bind(this);
+        this.removeAllListeners = this.removeAllListeners.bind(this);
+    }
+
+    /**
+     * Adds an event listener for the specified event.
+     *
+     * @param {string} eventName - Name of the event to listen for.
+     * @param {Function} listener - Callback function to execute when the event occurs.
+     * @returns {Function} Unsubscribe function to remove the listener.
+     * @throws {TypeError} If eventName is not a string or listener is not a function.
+     */
+    on(eventName, listener) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+        if (typeof listener !== 'function') {
+            throw new TypeError('Listener must be a function');
+        }
+
+        if (!this.listeners.has(eventName)) {
+            this.listeners.set(eventName, new Set());
+        }
+
+        this.listeners.get(eventName).add(listener);
+
+        // Return unsubscribe function
+        return () => this.off(eventName, listener);
+    }
+
+    /**
+     * Removes an event listener for the specified event.
+     *
+     * @param {string} eventName - Name of the event to remove listener from.
+     * @param {Function} listener - Callback function to remove.
+     * @throws {TypeError} If eventName is not a string or listener is not a function.
+     */
+    off(eventName, listener) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+        if (typeof listener !== 'function') {
+            throw new TypeError('Listener must be a function');
+        }
+
+        const listeners = this.listeners.get(eventName);
+        if (listeners) {
+            listeners.delete(listener);
+
+            // Clean up empty listener sets
+            if (listeners.size === 0) {
+                this.listeners.delete(eventName);
+            }
+        }
+    }
+
+    /**
+     * Adds a one-time event listener that removes itself after being called.
+     *
+     * @param {string} eventName - Name of the event to listen for once.
+     * @param {Function} listener - Callback function to execute once.
+     * @returns {Function} Unsubscribe function to remove the listener.
+     * @throws {TypeError} If eventName is not a string or listener is not a function.
+     */
+    once(eventName, listener) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+        if (typeof listener !== 'function') {
+            throw new TypeError('Listener must be a function');
+        }
+
+        const onceWrapper = (...args) => {
+            this.off(eventName, onceWrapper);
+            listener.apply(this, args);
+        };
+
+        return this.on(eventName, onceWrapper);
+    }
+
+    /**
+     * Emits an event with the specified data to all registered listeners.
+     *
+     * @param {string} eventName - Name of the event to emit.
+     * @param {*} data - Data to pass to the event listeners.
+     * @returns {boolean} True if the event had listeners, false otherwise.
+     * @throws {TypeError} If eventName is not a string.
+     * @throws {AggregateError} If one or more listeners throw an error during execution.
+     */
+    emit(eventName, data) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+
+        const listeners = this.listeners.get(eventName);
+        if (!listeners) {
+            return false;
+        }
+
+        const errors = [];
+        listeners.forEach(listener => {
+            try {
+                listener(data);
+            } catch (error) {
+                errors.push(error);
+            }
+        });
+
+        if (errors.length > 0) {
+            throw new AggregateError(errors, `Error(s) occurred while emitting "${eventName}" event`);
+        }
+
+        return true;
+    }
+
+    /**
+     * Removes all listeners for a specific event or all events.
+     *
+     * @param {string} [eventName] - Optional event name. If not provided, removes all listeners.
+     * @throws {TypeError} If eventName is provided but is not a string.
+     */
+    removeAllListeners(eventName) {
+        if (eventName === undefined) {
+            this.listeners.clear();
+        } else if (typeof eventName === 'string') {
+            this.listeners.delete(eventName);
+        } else {
+            throw new TypeError('Event name must be a string or undefined');
+        }
+    }
+
+    /**
+     * Gets the number of listeners for a specific event.
+     *
+     * @param {string} eventName - Name of the event to count listeners for.
+     * @returns {number} Number of listeners for the event.
+     * @throws {TypeError} If eventName is not a string.
+     */
+    listenerCount(eventName) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+
+        const listeners = this.listeners.get(eventName);
+        return listeners ? listeners.size : 0;
+    }
+
+    /**
+     * Gets all registered event names.
+     *
+     * @returns {string[]} Array of event names.
+     */
+    eventNames() {
+        return Array.from(this.listeners.keys());
+    }
+
+    /**
+     * Gets all listeners for a specific event.
+     *
+     * @param {string} eventName - Name of the event to get listeners for.
+     * @returns {Function[]} Array of listener functions.
+     * @throws {TypeError} If eventName is not a string.
+     */
+    listeners(eventName) {
+        if (typeof eventName !== 'string') {
+            throw new TypeError('Event name must be a string');
+        }
+
+        const listeners = this.listeners.get(eventName);
+        return listeners ? Array.from(listeners) : [];
+    }
+}
+
+================================================
+File: /src/core/KnowledgeGraphManager.js
+================================================
+// src/KnowledgeGraphManager.js
+
+import {JsonLineStorage} from './storage/JsonLineStorage.js';
+import {ManagerFactory} from './managers/ManagerFactory.js';
+
+/**
+ * @class KnowledgeGraphManager
+ * @classdesc Manages the operations related to the knowledge graph, including adding, updating, deleting nodes and edges, as well as handling metadata and search functionalities.
+ */
+export class KnowledgeGraphManager {
+    /**
+     * Creates an instance of KnowledgeGraphManager.
+     *
+     * @param {Object} [storage=new JsonLineStorage()] - The storage mechanism to use for persisting the knowledge graph.
+     */
+    constructor(storage = new JsonLineStorage()) {
+        /**
+         * @private
+         * @type {JsonLineStorage}
+         * @description The storage instance used to load and save the knowledge graph.
+         */
+        this.storage = storage;
+
+        /**
+         * @private
+         * @type {INodeManager}
+         * @description Manager responsible for handling node-related operations.
+         */
+        this.nodeManager = ManagerFactory.createNodeManager(this.storage);
+
+        /**
+         * @private
+         * @type {IEdgeManager}
+         * @description Manager responsible for handling edge-related operations.
+         */
+        this.edgeManager = ManagerFactory.createEdgeManager(this.storage);
+
+        /**
+         * @private
+         * @type {IMetadataManager}
+         * @description Manager responsible for handling metadata-related operations.
+         */
+        this.metadataManager = ManagerFactory.createMetadataManager(this.storage);
+
+        /**
+         * @private
+         * @type {ISearchManager}
+         * @description Manager responsible for handling search-related operations.
+         */
+        this.searchManager = ManagerFactory.createSearchManager(this.storage);
+    }
+
+    /**
+     * Adds new nodes to the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects to add. Each node should have at least a `name` and `nodeType`.
+     * @returns {Promise<Array<Object>>} - Array of newly added nodes.
+     * @throws {Error} If adding nodes fails.
+     */
+    async addNodes(nodes) {
+        return this.nodeManager.addNodes(nodes);
+    }
+
+    /**
+     * Updates existing nodes in the knowledge graph.
+     *
+     * @param {Array<Object>} nodes - Array of node objects with updates. Each node must have a `name` to identify it.
+     * @returns {Promise<Array<Object>>} - Array of updated nodes.
+     * @throws {Error} If updating nodes fails.
+     */
+    async updateNodes(nodes) {
+        return this.nodeManager.updateNodes(nodes);
+    }
+
+    /**
+     * Adds new edges between nodes in the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to add. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<Array<Object>>} - Array of newly added edges.
+     * @throws {Error} If adding edges fails.
+     */
+    async addEdges(edges) {
+        return this.edgeManager.addEdges(edges);
+    }
+
+    /**
+     * Updates existing edges in the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects with updates. Each edge must have `from`, `to`, and `edgeType` to identify it.
+     * @returns {Promise<Array<Object>>} - Array of updated edges.
+     * @throws {Error} If updating edges fails.
+     */
+    async updateEdges(edges) {
+        return this.edgeManager.updateEdges(edges);
+    }
+
+    /**
+     * Adds metadata to existing nodes.
+     *
+     * @param {Array<Object>} metadata - Array of metadata objects to add. Each object should have `nodeName` and `contents`.
+     * @returns {Promise<Array<Object>>} - Results of metadata additions.
+     * @throws {Error} If adding metadata fails.
+     */
+    async addMetadata(metadata) {
+        return this.metadataManager.addMetadata(metadata);
+    }
+
+    /**
+     * Deletes nodes and their associated edges from the knowledge graph.
+     *
+     * @param {Array<string>} nodeNames - Array of node names to delete.
+     * @returns {Promise<void>}
+     * @throws {Error} If deleting nodes fails.
+     */
+    async deleteNodes(nodeNames) {
+        await this.nodeManager.deleteNodes(nodeNames);
+    }
+
+    /**
+     * Deletes metadata from nodes.
+     *
+     * @param {Array<Object>} deletions - Array of metadata deletion objects. Each object should have `nodeName` and `metadata`.
+     * @returns {Promise<void>}
+     * @throws {Error} If deleting metadata fails.
+     */
+    async deleteMetadata(deletions) {
+        await this.metadataManager.deleteMetadata(deletions);
+    }
+
+    /**
+     * Deletes edges from the knowledge graph.
+     *
+     * @param {Array<Object>} edges - Array of edge objects to delete. Each edge should have `from`, `to`, and `edgeType`.
+     * @returns {Promise<void>}
+     * @throws {Error} If deleting edges fails.
+     */
+    async deleteEdges(edges) {
+        await this.edgeManager.deleteEdges(edges);
+    }
+
+    /**
+     * Reads the entire knowledge graph.
+     *
+     * @returns {Promise<Object>} - The complete graph with nodes and edges.
+     * @throws {Error} If reading the graph fails.
+     */
+    async readGraph() {
+        return this.storage.loadGraph();
+    }
+
+    /**
+     * Searches for nodes based on a query.
+     *
+     * @param {string} query - Search query string.
+     * @returns {Promise<Object>} - Filtered graph containing matching nodes and their edges.
+     * @throws {Error} If the search operation fails.
+     */
+    async searchNodes(query) {
+        return this.searchManager.searchNodes(query);
+    }
+
+    /**
+     * Retrieves specific nodes by their names.
+     *
+     * @param {Array<string>} names - Array of node names to retrieve.
+     * @returns {Promise<Object>} - Filtered graph containing specified nodes and their edges.
+     * @throws {Error} If retrieving nodes fails.
+     */
+    async openNodes(names) {
+        return this.searchManager.openNodes(names);
+    }
+}
+
+
+================================================
+File: /src/config/schemas/artifact.schema.json
+================================================
+{
+  "name": "add_artifact",
+  "description": "Add a new artifact or unique item to the knowledge graph",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The artifact's name",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "A detailed description of the artifact",
+      "required": true
+    },
+    "type": {
+      "type": "string",
+      "description": "The artifact's type",
+      "required": true
+    },
+    "rarity": {
+      "type": "string",
+      "description": "The rarity of the artifact",
+      "required": true
+    },
+    "effects": {
+      "type": "array",
+      "description": "The artifact's effects or abilities",
+      "required": true
+    },
+    "origin": {
+      "type": "string",
+      "description": "The artifact's origin or history",
+      "required": false
+    },
+    "value": {
+      "type": "string",
+      "description": "The monetary or intrinsic value of the artifact",
+      "required": false
+    },
+    "relatedCharacters": {
+      "type": "array",
+      "description": "Characters associated with the artifact",
+      "required": false,
+      "relationship": {
+        "edgeType": "owned_by",
+        "description": "Artifact owners"
+      }
+    },
+    "relatedQuests": {
+      "type": "array",
+      "description": "Quests involving the artifact",
+      "required": false,
+      "relationship": {
+        "edgeType": "associated_with",
+        "description": "Artifact-related quests"
+      }
+    },
+    "relatedLocations": {
+      "type": "array",
+      "description": "Locations associated with the artifact",
+      "required": false,
+      "relationship": {
+        "edgeType": "found_at",
+        "description": "Artifact locations"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/quest.schema.json
+================================================
+{
+  "name": "add_quest",
+  "description": "Add a new Quest to the knowledge graph",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Quest's name",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the quest",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status of the quest",
+      "required": true,
+      "enum": [
+        "Active",
+        "Completed",
+        "Failed"
+      ]
+    },
+    "objectives": {
+      "type": "array",
+      "description": "List of objectives to complete the quest",
+      "required": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "rewards": {
+      "type": "array",
+      "description": "List of rewards for completing the quest",
+      "required": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "relatedCharacters": {
+      "type": "array",
+      "description": "List of player characters assigned to the quest",
+      "required": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "relatedNPCs": {
+      "type": "array",
+      "description": "List of NPCs involved in the quest",
+      "required": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "relatedLocations": {
+      "type": "array",
+      "description": "List of locations associated with the quest",
+      "required": false,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+
+================================================
+File: /src/config/schemas/currency.schema.json
+================================================
+{
+  "name": "add_currency",
+  "description": "Represents a type of currency in the game world.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the currency.",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of the currency.",
+      "required": false
+    },
+    "owner": {
+      "type": "string",
+      "description": "The entity or character that owns this currency.",
+      "required": true,
+      "relationship": {
+        "edgeType": "owned_by",
+        "description": "The relationship between the currency and its owner."
+      }
+    },
+    "quantity": {
+      "type": "string",
+      "description": "The amount of this currency owned.",
+      "required": true
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/player_character.schema.json
+================================================
+{
+  "name": "add_player_character",
+  "description": "Add a new Player Character to the knowledge graph",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Player character's name",
+      "required": true
+    },
+    "age": {
+      "type": "string",
+      "description": "Player character's age",
+      "required": true
+    },
+    "gender": {
+      "type": "string",
+      "description": "Player character's gender",
+      "required": true
+    },
+    "occupation": {
+      "type": "string",
+      "description": "Player character's occupation",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "Player character's current status",
+      "required": true
+    },
+    "race": {
+      "type": "string",
+      "description": "Player character's race",
+      "required": false
+    },
+    "description": {
+      "type": "string",
+      "description": "A detailed description of the player character",
+      "required": false
+    },
+    "background": {
+      "type": "string",
+      "description": "The background story of the player character",
+      "required": false
+    },
+    "equipment": {
+      "type": "array",
+      "description": "List of equipment items associated with the player character",
+      "required": false
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/faction.schema.json
+================================================
+{
+  "name": "add_faction",
+  "description": "A faction or organization operating within the game world.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the faction or organization.",
+      "required": true
+    },
+    "type": {
+      "type": "string",
+      "description": "The type of the faction.",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "A detailed description of the faction.",
+      "required": true
+    },
+    "goals": {
+      "type": "array",
+      "description": "The main objectives or goals of the faction.",
+      "required": false
+    },
+    "leader": {
+      "type": "string",
+      "description": "The leader of the faction.",
+      "required": false,
+      "relationship": {
+        "edgeType": "led_by",
+        "description": "The entity leading this faction."
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/skills.schema.json
+================================================
+{
+  "name": "add_skills",
+  "description": "Defines list of skills or abilities a character can possess.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "[Entity]_abilities",
+      "required": true
+    },
+    "owner": {
+      "type": "string",
+      "description": "The entity or character that owns these skills.",
+      "required": true,
+      "relationship": {
+        "edgeType": "possesses",
+        "description": "The relationship between the skill and its owner."
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+
+================================================
+File: /src/config/schemas/transportation.schema.json
+================================================
+{
+  "name": "add_transportation",
+  "description": "Represents a transportation owned or used by a character or entity.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the vehicle.",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of the vehicle.",
+      "required": true
+    },
+    "owner": {
+      "type": "string",
+      "description": "The entity or character that owns this vehicle.",
+      "required": true,
+      "relationship": {
+        "edgeType": "owned_by",
+        "description": "The relationship between the vehicle and its owner."
+      }
+    },
+    "type": {
+      "type": "string",
+      "description": "The type or class of the vehicle (e.g., car, spaceship, boat, horse).",
+      "required": true
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/location.schema.json
+================================================
+{
+  "name": "add_location",
+  "description": "Add a new location to the knowledge graph",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Location's name",
+      "required": true
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of location",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the location",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "Current state of the location",
+      "required": true
+    },
+    "parentLocation": {
+      "type": "string",
+      "description": "The parent location this location belongs to",
+      "required": false
+    },
+    "atmosphere": {
+      "type": "string",
+      "description": "The general feel/mood of the location",
+      "required": false
+    },
+    "accessibility": {
+      "type": "string",
+      "description": "How characters can enter/exit the location",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "description": "The size or scale of the location",
+      "required": false
+    },
+    "dangerLevel": {
+      "type": "string",
+      "description": "The level of danger present in the location",
+      "required": false
+    },
+    "notableFeatures": {
+      "type": "array",
+      "description": "Distinct characteristics of the location",
+      "required": false
+    },
+    "subLocations": {
+      "type": "array",
+      "description": "Locations contained within this location",
+      "required": false,
+      "relationship": {
+        "edgeType": "contains",
+        "description": "Locations contained within this location"
+      }
+    },
+    "relatedCharacters": {
+      "type": "array",
+      "description": "Characters present in or associated with this location",
+      "required": false,
+      "relationship": {
+        "edgeType": "present_in",
+        "description": "Characters associated with the location"
+      }
+    },
+    "relatedQuests": {
+      "type": "array",
+      "description": "Quests associated with this location",
+      "required": false,
+      "relationship": {
+        "edgeType": "takes_place_in",
+        "description": "Quests associated with the location"
+      }
+    },
+    "relatedArtifacts": {
+      "type": "array",
+      "description": "Artifacts found or stored at this location",
+      "required": false,
+      "relationship": {
+        "edgeType": "located_at",
+        "description": "Artifacts associated with the location"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/npc.schema.json
+================================================
+{
+  "name": "add_npc",
+  "description": "Add a new Non-Player Character (NPC) to the knowledge graph",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "NPC's name",
+      "required": true
+    },
+    "role": {
+      "type": "string",
+      "description": "NPC's role or occupation",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "NPC's current status",
+      "required": true
+    },
+    "currentLocation": {
+      "type": "string",
+      "description": "The current location of the NPC",
+      "required": true,
+      "relationship": {
+        "edgeType": "located_in",
+        "description": "The current location of the NPC"
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "A detailed description of the NPC",
+      "required": true
+    },
+    "gender": {
+      "type": "string",
+      "description": "NPC's gender",
+      "required": false
+    },
+    "race": {
+      "type": "string",
+      "description": "NPC's race",
+      "required": false
+    },
+    "background": {
+      "type": "string",
+      "description": "The background story of the NPC",
+      "required": false
+    },
+    "secret": {
+      "type": "string",
+      "description": "A hidden detail about the NPC",
+      "required": false
+    },
+    "origin": {
+      "type": "string",
+      "description": "The origin or home location of the NPC",
+      "required": false,
+      "relationship": {
+        "edgeType": "originates_from",
+        "description": "The origin location of the NPC"
+      }
+    },
+    "traits": {
+      "type": "array",
+      "description": "Unique traits or characteristics of the NPC",
+      "required": false
+    },
+    "abilities": {
+      "type": "array",
+      "description": "Specific skills or powers the NPC possesses",
+      "required": false
+    },
+    "importance": {
+      "type": "string",
+      "description": "The importance of the NPC in the story or world",
+      "required": false
+    },
+    "reputation": {
+      "type": "string",
+      "description": "How the NPC is perceived by others",
+      "required": false
+    },
+    "money": {
+      "type": "string",
+      "description": "Currency or wealth the NPC holds",
+      "required": false
+    },
+    "alignment": {
+      "type": "string",
+      "description": "The ethical or moral alignment of the NPC",
+      "required": false
+    },
+    "motivation": {
+      "type": "string",
+      "description": "The driving purpose or goals of the NPC",
+      "required": false
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/inventory.schema.json
+================================================
+{
+  "name": "add_inventory",
+  "description": "A collection of items or equipment belonging to a character, entity, or location.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "[Entity]_inventory.",
+      "required": true
+    },
+    "owner": {
+      "type": "string",
+      "description": "The owner of this inventory.",
+      "required": true,
+      "relationship": {
+        "edgeType": "owned_by",
+        "description": "The entity that owns this inventory."
+      }
+    },
+    "items": {
+      "type": "array",
+      "description": "List of items in the inventory.",
+      "required": true
+    }
+  },
+  "additionalProperties": true
+}
+
+================================================
+File: /src/config/schemas/temporal.schema.json
+================================================
+{
+  "name": "add_temporal",
+  "description": "Represents a specific point in time and its associated environmental conditions.",
+  "properties": {
+    "time": {
+      "type": "string",
+      "description": "The specific time.",
+      "required": false
+    },
+    "day": {
+      "type": "string",
+      "description": "The current day.",
+      "required": false
+    },
+    "year": {
+      "type": "string",
+      "description": "The current year or point in the timeline.",
+      "required": false
+    },
+    "weather": {
+      "type": "string",
+      "description": "The current weather or environmental conditions.",
+      "required": false
+    }
+  },
+  "additionalProperties": true
+}
+
+
+================================================
+File: /src/index.js
+================================================
+#!/usr/bin/env node
+import {Server} from "@modelcontextprotocol/sdk/server/index.js";
+import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import {KnowledgeGraphManager} from './core/KnowledgeGraphManager.js';
+import {handleCallToolRequest} from './tools/callToolHandler.js';
+import {tools} from './tools/tools.js';
+
+/**
+ * Initializes and starts the Knowledge Graph MCP Server.
+ *
+ * @classdesc The main entry point for the MCP server that manages the knowledge graph. It sets up request handlers, initializes dynamic tools, and handles server events.
+ */
+
+// The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
+const knowledgeGraphManager = new KnowledgeGraphManager();
+
+// The server instance and tools exposed to Claude
+const server = new Server({
+    name: "memorymesh",
+    version: "0.1.3",
+}, {
+    capabilities: {
+        tools: {},  // Removed listChanged since we're not using dynamic updates
+    },
+});
+
+/**
+ * The main function that initializes and starts the server.
+ *
+ * @async
+ * @function main
+ * @returns {Promise<void>}
+ */
+async function main() {
+    try {
+        // Set up request handlers with dynamic tools
+        server.setRequestHandler(ListToolsRequestSchema, async () => {
+            return {
+                tools: tools,
+            };
+        });
+
+        server.setRequestHandler(CallToolRequestSchema, async (request) => {
+            return await handleCallToolRequest(request, knowledgeGraphManager);
+        });
+
+        // Set up error handler
+        server.onerror = (error) => {
+            console.error("[MCP Server Error]", error);
+        };
+
+        // Handle graceful shutdown
+        process.on('SIGINT', async () => {
+            await server.close();
+            process.exit(0);
+        });
+
+        // Connect transport
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        console.error("Knowledge Graph MCP Server (RPG edition) running on stdio");
+    } catch (error) {
+        console.error("Fatal error during server startup:", error);
+        process.exit(1);
+    }
+}
+
+main().catch((error) => {
+    console.error("Fatal error in main():", error);
+    process.exit(1);
+});
+
+
+================================================
+File: /src/schema/loader/schemaProcessor.js
+================================================
+// src/schema/loader/schemaProcessor.js
+
+/**
+ * Formats a field value into a metadata string.
+ *
+ * @param {string} field - The field name
+ * @param {string|string[]} value - The field value to format
+ * @returns {string} - Formatted metadata string
+ */
+function formatMetadataEntry(field, value) {
+    const formattedValue = Array.isArray(value) ? value.join(', ') : value;
+    return `${field}: ${formattedValue}`;
+}
+
+/**
+ * Creates a node based on schema definition and input data.
+ *
+ * @param {Object} data - Input data for the node.
+ * @param {Object} schema - Schema definition from SchemaBuilder.
+ * @param {string} nodeType - Type of node to create.
+ * @returns {Promise<Object>} - Object containing nodes and edges arrays.
+ * @throws {Error} If required fields are missing or processing fails.
+ */
+export async function createSchemaNode(data, schema, nodeType) {
+    const {metadataConfig, relationships} = schema;
+
+    // Initialize arrays for metadata, nodes, and edges
+    const metadata = [];
+    const nodes = [];
+    const edges = [];
+
+    // Create a comprehensive set of fields to exclude from additional properties
+    const excludedFields = new Set([
+        'name',  // Exclude name as it's handled separately
+        ...metadataConfig.requiredFields,
+        ...metadataConfig.optionalFields,
+        ...(metadataConfig.excludeFields || []),
+    ]);
+
+    // Add relationship fields to excluded set
+    if (relationships) {
+        Object.keys(relationships).forEach(field => excludedFields.add(field));
+    }
+
+    // Process required fields first
+    for (const field of metadataConfig.requiredFields) {
+        if (data[field] === undefined) {
+            throw new Error(`Required field "${field}" is missing`);
+        }
+        // Skip if this field is part of a relationship
+        if (!relationships || !relationships[field]) {
+            metadata.push(formatMetadataEntry(field, data[field]));
+        }
+    }
+
+    // Process optional fields
+    for (const field of metadataConfig.optionalFields) {
+        if (data[field] !== undefined && (!relationships || !relationships[field])) {
+            metadata.push(formatMetadataEntry(field, data[field]));
+        }
+    }
+
+    // Process relationships
+    if (relationships) {
+        for (const [field, config] of Object.entries(relationships)) {
+            if (data[field]) {
+                const value = data[field];
+                if (Array.isArray(value)) {
+                    value.forEach(target => {
+                        edges.push({
+                            from: data.name,
+                            to: target,
+                            edgeType: config.edgeType
+                        });
+                    });
+                } else {
+                    edges.push({
+                        from: data.name,
+                        to: value,
+                        edgeType: config.edgeType
+                    });
+                }
+                metadata.push(formatMetadataEntry(field, value));
+            }
+        }
+    }
+
+    // Process additional properties (only those not already handled)
+    for (const [key, value] of Object.entries(data)) {
+        if (!excludedFields.has(key) && value !== undefined) {
+            metadata.push(formatMetadataEntry(key, value));
+        }
+    }
+
+    // Create the main node without duplicating the name in metadata
+    const mainNode = {
+        name: data.name,
+        nodeType,
+        metadata
+    };
+    nodes.push(mainNode);
+
+    return {nodes, edges};
+}
+
+/**
+ * Updates a node's metadata and relationships based on schema definition.
+ *
+ * @param {Object} updates - Update data for the node.
+ * @param {Object} currentNode - Current node to update.
+ * @param {Object} schema - Schema definition from SchemaBuilder.
+ * @param {Object} currentGraph - Current graph state.
+ * @returns {Promise<Object>} - Updated node metadata and edge changes.
+ * @throws {Error} If processing updates fails.
+ */
+export async function updateSchemaNode(updates, currentNode, schema, currentGraph) {
+    const {metadataConfig, relationships} = schema;
+    const metadata = new Map(); // Use a Map to track unique metadata entries
+    const edgeChanges = {
+        remove: [],
+        add: []
+    };
+
+    // Create a set of all schema-defined fields
+    const schemaFields = new Set([
+        ...metadataConfig.requiredFields,
+        ...metadataConfig.optionalFields,
+        ...(metadataConfig.excludeFields || []),
+        'name',
+        'metadata'
+    ]);
+
+    // Add relationship fields to schema fields
+    if (relationships) {
+        Object.keys(relationships).forEach(field => schemaFields.add(field));
+    }
+
+    // First, process existing metadata into the Map
+    currentNode.metadata.forEach(meta => {
+        const colonIndex = meta.indexOf(':');
+        if (colonIndex !== -1) {
+            const key = meta.substring(0, colonIndex).trim().toLowerCase();
+            const value = meta.substring(colonIndex + 1).trim();
+            metadata.set(key, value);
+        }
+    });
+
+    // Function to update metadata entry
+    const updateMetadataEntry = (key, value) => {
+        const formattedValue = Array.isArray(value) ? value.join(', ') : value;
+        metadata.set(key.toLowerCase(), formattedValue);
+    };
+
+    // Handle all schema-defined fields (both required and optional)
+    const allSchemaFields = [...metadataConfig.requiredFields, ...metadataConfig.optionalFields];
+    for (const field of allSchemaFields) {
+        if (updates[field] !== undefined && !relationships[field]) {
+            updateMetadataEntry(field, updates[field]);
+        }
+    }
+
+    // Process relationships
+    if (relationships) {
+        for (const [field, config] of Object.entries(relationships)) {
+            if (updates[field] !== undefined) {
+                // Find existing edges for this relationship
+                const existingEdges = currentGraph.edges.filter(edge =>
+                    edge.from === currentNode.name &&
+                    edge.edgeType === config.edgeType
+                );
+
+                // Mark existing edges for removal
+                edgeChanges.remove.push(...existingEdges);
+
+                // Create new edges
+                const value = updates[field];
+                if (Array.isArray(value)) {
+                    value.forEach(target => {
+                        edgeChanges.add.push({
+                            from: currentNode.name,
+                            to: target,
+                            edgeType: config.edgeType
+                        });
+                    });
+                } else if (value) {
+                    edgeChanges.add.push({
+                        from: currentNode.name,
+                        to: value,
+                        edgeType: config.edgeType
+                    });
+                }
+
+                // Update metadata for relationship
+                updateMetadataEntry(field, value);
+            }
+        }
+    }
+
+    // Process additional properties (only those not in schema)
+    for (const [key, value] of Object.entries(updates)) {
+        if (!schemaFields.has(key) && value !== undefined) {
+            updateMetadataEntry(key, value);
+        }
+    }
+
+    // Convert Map back to array format with proper capitalization
+    const updatedMetadata = Array.from(metadata).map(([key, value]) => {
+        const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+        return `${capitalizedKey}: ${value}`;
+    });
+
+    return {
+        metadata: updatedMetadata,
+        edgeChanges
+    };
+}
+
+/**
+ * Handles the complete update process for a schema-based entity.
+ *
+ * @param {Object} updates - Update data for the entity.
+ * @param {Object} schema - Schema definition from SchemaBuilder.
+ * @param {string} nodeType - Type of node to update.
+ * @param {Object} knowledgeGraphManager - Graph manager instance.
+ * @returns {Promise<Object>} - Updated nodes and edge changes.
+ * @throws {Error} If handling the update fails.
+ */
+export async function handleSchemaUpdate(updates, schema, nodeType, knowledgeGraphManager) {
+    // Get only the specific nodes we need using openNodes
+    const {nodes} = await knowledgeGraphManager.openNodes([updates.name]);
+    const node = nodes.find(n => n.nodeType === nodeType);
+
+    if (!node) {
+        throw new Error(`${nodeType} "${updates.name}" not found`);
+    }
+
+    // Get relevant edges only for this node if we're updating relationships
+    let relevantEdges = [];
+    if (schema.relationships && Object.keys(schema.relationships).some(field => updates[field] !== undefined)) {
+        const {edges} = await knowledgeGraphManager.getEdges({from: updates.name});
+        relevantEdges = edges;
+    }
+
+    // Process updates using the schema with only relevant data
+    const {metadata, edgeChanges} = await updateSchemaNode(
+        updates,
+        node,
+        schema,
+        {nodes: [node], edges: relevantEdges}
+    );
+
+    // Handle edge changes in a transaction-like manner
+    if (edgeChanges.remove.length > 0) {
+        await knowledgeGraphManager.deleteEdges(edgeChanges.remove);
+    }
+
+    if (edgeChanges.add.length > 0) {
+        await knowledgeGraphManager.addEdges(edgeChanges.add);
+    }
+
+    // Update the node
+    const updatedNode = {
+        ...node,
+        metadata
+    };
+
+    await knowledgeGraphManager.updateNodes([updatedNode]);
+
+    return {
+        updatedNodes: [updatedNode],
+        edgeChanges
+    };
+}
+
+/**
+ * Handles the complete delete process for a schema-based entity.
+ *
+ * @param {string} nodeName - Name of the node to delete.
+ * @param {string} nodeType - Type of node to delete.
+ * @param {Object} knowledgeGraphManager - Graph manager instance.
+ * @returns {Promise<Object>} - Result of the deletion.
+ * @throws {Error} If handling the deletion fails.
+ */
+export async function handleSchemaDelete(nodeName, nodeType, knowledgeGraphManager) {
+    const graph = await knowledgeGraphManager.readGraph();
+
+    // Find the node
+    const node = graph.nodes.find(n => n.name === nodeName && n.nodeType === nodeType);
+    if (!node) {
+        throw new Error(`${nodeType} "${nodeName}" not found`);
+    }
+
+    // Delete the node and its associated edges
+    await knowledgeGraphManager.deleteNodes([nodeName]);
+
+    return {result: `${nodeType} "${nodeName}" deleted successfully`};
+}
+
+================================================
+File: /src/schema/loader/schemaLoader.js
+================================================
+// src/schema/loader/schemaLoader.js
+import {promises as fs} from 'fs';
+import {SchemaBuilder} from './schemaBuilder.js';
+import {fileURLToPath} from 'url';
+import path from 'path';
+
+/**
+ * @class SchemaLoader
+ * @classdesc Responsible for loading and converting schema definitions from JSON files into SchemaBuilder instances.
+ */
+export class SchemaLoader {
+    /**
+     * Loads a specific schema by name.
+     *
+     * @param {string} schemaName - The name of the schema to load.
+     * @returns {Promise<Object>} - The SchemaBuilder instance representing the loaded schema.
+     * @throws {Error} If reading or parsing the schema file fails.
+     */
+    static async loadSchema(schemaName) {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const SCHEMAS_DIR = path.join(__dirname, '..', '..', 'config', 'schemas');
+        const schemaPath = path.join(SCHEMAS_DIR, `${schemaName}.schema.json`);
+        const schemaContent = await fs.readFile(schemaPath, 'utf-8');
+        const schema = JSON.parse(schemaContent);
+
+        return this.convertToSchemaBuilder(schema);
+    }
+
+    /**
+     * Converts a JSON schema object into a SchemaBuilder instance.
+     *
+     * @param {Object} schema - The JSON schema object to convert.
+     * @returns {SchemaBuilder} - The resulting SchemaBuilder instance.
+     */
+    static convertToSchemaBuilder(schema) {
+        const builder = new SchemaBuilder(schema.name, schema.description);
+
+        for (const [propName, propConfig] of Object.entries(schema.properties)) {
+            if (propConfig.type === 'array') {
+                builder.addArrayProperty(
+                    propName,
+                    propConfig.description,
+                    propConfig.required,
+                    propConfig.enum
+                );
+            } else {
+                builder.addStringProperty(
+                    propName,
+                    propConfig.description,
+                    propConfig.required,
+                    propConfig.enum
+                );
+            }
+
+            // Add relationship if defined
+            if (propConfig.relationship) {
+                builder.addRelationship(
+                    propName,
+                    propConfig.relationship.edgeType,
+                    propConfig.relationship.description
+                );
+            }
+        }
+
+        if (schema.additionalProperties !== undefined) {
+            builder.setAdditionalProperties(schema.additionalProperties);
+        }
+
+        return builder;
+    }
+
+    /**
+     * Loads all schema files from the schemas directory.
+     *
+     * @returns {Promise<Object>} - An object mapping schema names to their respective SchemaBuilder instances.
+     * @throws {Error} If reading the schemas directory or parsing any schema file fails.
+     */
+    static async loadAllSchemas() {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const SCHEMAS_DIR = path.join(__dirname, '..', '..', 'config', 'schemas');
+        const files = await fs.readdir(SCHEMAS_DIR);
+        const schemaFiles = files.filter(file => file.endsWith('.schema.json'));
+
+        const schemas = {};
+        for (const file of schemaFiles) {
+            const schemaName = path.basename(file, '.schema.json');
+            schemas[schemaName] = await this.loadSchema(schemaName);
+        }
+
+        return schemas;
+    }
+}
+
+
+================================================
+File: /src/schema/loader/schemaBuilder.js
+================================================
+// src/schema/loader/schemaBuilder.js
+
+/**
+ * @class SchemaBuilder
+ * @classdesc Facilitates the construction and manipulation of schemas for nodes in the knowledge graph. Allows adding properties, relationships, and configuring metadata.
+ */
+export class SchemaBuilder {
+    /**
+     * Creates an instance of SchemaBuilder.
+     *
+     * @param {string} name - The name of the schema.
+     * @param {string} description - A brief description of the schema.
+     */
+    constructor(name, description) {
+        /**
+         * @private
+         * @type {Object}
+         * @description The base schema structure being built.
+         */
+        this.schema = {
+            name,
+            description,
+            inputSchema: {
+                type: "object",
+                properties: {
+                    [name.replace('add_', '')]: {
+                        type: "object",
+                        properties: {},
+                        required: [],
+                        additionalProperties: {
+                            type: "string",
+                            description: "Any additional properties"
+                        }
+                    }
+                },
+                required: [name.replace('add_', '')]
+            }
+        };
+        /**
+         * @private
+         * @type {Map<string, Object>}
+         * @description Stores relationship definitions with property names as keys.
+         */
+        this.relationships = new Map();
+        /**
+         * @private
+         * @type {Object}
+         * @description Configuration for metadata fields, categorizing them into required, optional, and excluded fields.
+         */
+        this.metadataConfig = {
+            requiredFields: [],
+            optionalFields: [],
+            excludeFields: []
+        };
+    }
+
+    /**
+     * Adds a string property to the schema with an optional enum.
+     *
+     * @param {string} name - Property name.
+     * @param {string} description - Property description.
+     * @param {boolean} [required=false] - Whether the property is required.
+     * @param {string[]} [enumValues=null] - Optional array of allowed values.
+     * @returns {SchemaBuilder} - Returns this for method chaining.
+     */
+    addStringProperty(name, description, required = false, enumValues = null) {
+        const property = {
+            type: "string",
+            description
+        };
+
+        if (enumValues) {
+            property.enum = enumValues;
+        }
+
+        this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].properties[name] = property;
+
+        if (required) {
+            this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].required.push(name);
+            this.metadataConfig.requiredFields.push(name);
+        } else {
+            this.metadataConfig.optionalFields.push(name);
+        }
+
+        return this;
+    }
+
+    /**
+     * Adds an array property to the schema with optional enum values for items.
+     *
+     * @param {string} name - Property name.
+     * @param {string} description - Property description.
+     * @param {boolean} [required=false] - Whether the property is required.
+     * @param {string[]} [enumValues=null] - Optional array of allowed values for array items.
+     * @returns {SchemaBuilder} - Returns this for method chaining.
+     */
+    addArrayProperty(name, description, required = false, enumValues = null) {
+        const property = {
+            type: "array",
+            items: {
+                type: "string"
+            },
+            description
+        };
+
+        if (enumValues) {
+            property.items.enum = enumValues;
+        }
+
+        this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].properties[name] = property;
+
+        if (required) {
+            this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].required.push(name);
+            this.metadataConfig.requiredFields.push(name);
+        } else {
+            this.metadataConfig.optionalFields.push(name);
+        }
+
+        return this;
+    }
+
+    /**
+     * Adds a relationship definition to the schema.
+     *
+     * @param {string} propertyName - Name of the property representing the relationship.
+     * @param {string} edgeType - Type of the edge for this relationship.
+     * @param {string} description - Description of the relationship.
+     * @param {string} [nodeType=null] - Optional type of node for the relationship.
+     * @returns {SchemaBuilder} - Returns this for method chaining.
+     */
+    addRelationship(propertyName, edgeType, description, nodeType = null) {
+        this.relationships.set(propertyName, {edgeType, nodeType});
+        this.metadataConfig.excludeFields.push(propertyName);
+        return this.addArrayProperty(propertyName, description);
+    }
+
+    /**
+     * Sets whether additional properties are allowed in the schema.
+     *
+     * @param {boolean} allowed - Whether additional properties should be allowed.
+     * @returns {SchemaBuilder} - Returns this for method chaining.
+     */
+    setAdditionalProperties(allowed) {
+        if (!allowed) {
+            this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].additionalProperties = false;
+        }
+        return this;
+    }
+
+    /**
+     * Creates an update schema based on the current schema, excluding specified fields.
+     *
+     * @param {Set<string>} [excludeFields=new Set()] - Fields to exclude from the update schema.
+     * @returns {Object} - The complete update schema object.
+     */
+    createUpdateSchema(excludeFields = new Set()) {
+        const updateSchemaBuilder = new SchemaBuilder(
+            this.schema.name.replace('add_', 'update_'),
+            `Update an existing ${this.schema.name.replace('add_', '')} in the knowledge graph`
+        );
+
+        // Copy all properties except excluded ones
+        const baseProperties = this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].properties;
+        for (const [propName, propValue] of Object.entries(baseProperties)) {
+            if (!excludeFields.has(propName)) {
+                if (propValue.type === 'array') {
+                    updateSchemaBuilder.addArrayProperty(propName, propValue.description);
+                } else {
+                    updateSchemaBuilder.addStringProperty(propName, propValue.description);
+                }
+            }
+        }
+
+        // Copy relationships
+        for (const [propName, config] of this.relationships.entries()) {
+            if (!excludeFields.has(propName)) {
+                updateSchemaBuilder.addRelationship(propName, config.edgeType, config.description, config.nodeType);
+            }
+        }
+
+        // Add metadata array for complete metadata replacement
+        updateSchemaBuilder.addArrayProperty(
+            'metadata',
+            'An array of metadata contents to replace the existing metadata'
+        );
+
+        // Match additional properties setting
+        updateSchemaBuilder.setAdditionalProperties(
+            this.schema.inputSchema.properties[this.schema.name.replace('add_', '')].additionalProperties !== false
+        );
+
+        return updateSchemaBuilder.build();
+    }
+
+    /**
+     * Builds and returns the final schema object.
+     *
+     * @returns {Object} - The complete schema object.
+     */
+    build() {
+        return {
+            ...this.schema,
+            relationships: Object.fromEntries(this.relationships),
+            metadataConfig: this.metadataConfig
+        };
+    }
+}
+
+
+================================================
+File: /src/data/memory.json
+================================================
+
+
